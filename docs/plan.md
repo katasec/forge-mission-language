@@ -11,6 +11,8 @@
 | [Phase 5 — MAF Adapter](phases/phase-5-maf-adapter.md) | Implement IExpertRunner using Microsoft Agent Framework | Done |
 | [Phase 6 — CLI](phases/phase-6-cli.md) | fml run, fml validate, fml list experts | Done |
 | [Phase 7 — Validation](phases/phase-7-validation.md) | Build build-operator example, test hypothesis, document findings | Done |
+| [Phase 8 — ANTLR Migration](phases/phase-8-antlr-migration.md) | Replace hand-rolled parser with ANTLR4-generated parser, existing tests as regression gate | Not Started |
+| [Phase 9 — Variables](phases/phase-9-variables.md) | `let` bindings, mission parameters, per-step `with` clauses, context bag runtime | Not Started |
 
 ## Design docs
 
