@@ -68,6 +68,212 @@ Only one run was performed per method. Consistency across multiple runs would re
 
 ---
 
+## Side-by-side comparison
+
+Four criteria where the outputs differed most clearly.
+
+<!-- GitHub renders HTML tables; fenced code blocks cannot be placed inside markdown table cells -->
+
+### RBAC scope
+
+<table>
+<thead>
+<tr>
+<th width="50%">Expert pipeline — KubernetesArchitect</th>
+<th width="50%">Single prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: build-operator
+rules:
+- apiGroups: ["example.com"]
+  resources: ["buildrequests"]
+  verbs: ["get","list","watch","create","update","patch"]
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns"]
+  verbs: ["get","list","watch","create"]
+```
+
+✅ Cross-namespace scope — correct for the requirement ("any namespace").
+
+</td>
+<td>
+
+```yaml
+kind: Role
+metadata:
+  name: build-operator-role
+  namespace: default
+rules:
+- apiGroups: ["example.com"]
+  resources: ["buildrequests"]
+  verbs: ["get","list","watch","create","update","patch"]
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns"]
+  verbs: ["create","get","list","delete"]
+```
+
+❌ Namespace-scoped to `default`. The operator would silently ignore `BuildRequest` objects in every other namespace.
+
+</td>
+</tr>
+</tbody>
+</table>
+
+### CRD spec completeness
+
+<table>
+<thead>
+<tr>
+<th width="50%">Expert pipeline — KubernetesArchitect</th>
+<th width="50%">Single prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```go
+type BuildRequestSpec struct {
+    Source       string           `json:"source"`
+    BuilderImage string           `json:"builderImage"`
+    Timeout      *metav1.Duration `json:"timeout,omitempty"`
+}
+```
+
+✅ `Source` (code URL) and `BuilderImage` both present — matches requirements.
+
+</td>
+<td>
+
+```go
+type BuildRequestSpec struct {
+    Image   string `json:"image"`
+    Timeout string `json:"timeout,omitempty"`
+}
+```
+
+❌ `source` field omitted. Attention was distributed across all six sections simultaneously.
+
+</td>
+</tr>
+</tbody>
+</table>
+
+### Security depth
+
+<table>
+<thead>
+<tr>
+<th width="50%">Expert pipeline — SecurityArchitect</th>
+<th width="50%">Single prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```
+## Security Review — Summary of Findings
+1. RBAC: full `delete` on BuildRequest and
+   PipelineRun — restrict these
+2. No NetworkPolicies defined
+3. No Pod Security Standards specified
+4. No secret management strategy
+   (Docker registry credentials)
+5. No audit logging
+6. Error messages not sanitised —
+   may leak sensitive data
+```
+
+Then annotated the design inline, e.g.:
+
+```go
+Message string `json:"message,omitempty"`
+// sanitize before returning
+```
+
+✅ 6 specific findings tied to concrete artefacts from step 1.
+
+</td>
+<td>
+
+```
+## 5. Security Considerations
+
+### Secret Management
+Store secret credentials for Docker
+registries in Kubernetes Secrets and
+ensure the operator has permissions
+to refer to those secrets.
+```
+
+❌ One paragraph of generic advice. No gaps identified in the actual design.
+
+</td>
+</tr>
+</tbody>
+</table>
+
+### ADR quality
+
+<table>
+<thead>
+<tr>
+<th width="50%">Expert pipeline — PrincipalReviewer</th>
+<th width="50%">Single prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```
+## Approval Statement
+Status: Approved with conditions.
+
+Action items:
+1. Refine RBAC to least-privilege
+2. Specify network policy ingress rules
+3. Define Pod Security Standard ("restricted")
+4. Document secret management strategy
+5. Implement audit logging strategy
+6. Sanitise error messages
+7. Schedule follow-up review before
+   implementation begins
+```
+
+✅ Independent critique. PrincipalReviewer only saw prior output — "approved with conditions" plus 7 concrete blockers is a genuine review.
+
+</td>
+<td>
+
+```
+## 6. Architecture Decision Record
+
+### Conditions Before Implementation
+- Validate CRD schema and types.
+- Ensure Tekton integration readiness.
+- Confirm Prometheus pipeline is set up.
+- Assess security needs with team.
+```
+
+❌ Self-approving summary. The same reasoning that produced the design also reviewed it — gaps noticed the first time cannot be surfaced here.
+
+</td>
+</tr>
+</tbody>
+</table>
+
+---
+
 ## Summary
 
 | Criterion | Result | Notes |
