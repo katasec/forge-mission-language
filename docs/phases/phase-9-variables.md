@@ -24,7 +24,29 @@ mission BuildOperatorDesign(goal, persona) =
 Expert system prompts use `{{goal}}`, `{{persona}}`, `{{style}}` placeholders that are interpolated
 at runtime from the context bag before each step runs.
 
-## Grammar changes (delta from Phase 8 `Fml.g4`)
+## Environment variable support
+
+API keys and provider config must never appear in `.fml` files or be passed as `--var` flags
+(they would appear in shell history). Instead, `let` bindings support an `env()` builtin that
+reads from the process environment at runtime:
+
+```fsharp
+let apiKey  = env("OPENAI_API_KEY")
+let model   = env("FML_MODEL", "gpt-4o-mini")   // second arg = default value
+```
+
+The runtime resolves `env()` calls when seeding the context bag — before any expert runs.
+If a required env var is missing and no default is supplied, the run fails with a clear error.
+This keeps secrets out of source files and out of the context bag's string representation.
+
+Variable resolution order (lowest → highest precedence):
+
+1. `let` binding (includes `env()` calls)
+2. Mission parameter binding
+3. `with { }` clause on a step
+4. `--var key=value` CLI flag
+
+## Grammar changes (delta from Phase 8 `FmlGrammar.g4`)
 
 ```antlr
 program    : (letBinding | declaration)* EOF ;
@@ -41,7 +63,8 @@ step       : UPPER_ID withClause? ;
 
 withClause : 'with' '{' binding (',' binding)* '}' ;
 binding    : LOWER_ID '=' value ;
-value      : STRING | LOWER_ID ;
+value      : STRING | LOWER_ID | envCall ;
+envCall    : 'env' '(' STRING (',' STRING)? ')' ;
 
 LOWER_ID   : [a-z][a-zA-Z0-9]* ;
 STRING     : '"' (~["\r\n])* '"' ;
@@ -92,12 +115,13 @@ foreach (var step in flattenedSteps)
 | 6 | Update `PipelineRunner` — seed context from `let` bindings, merge `with` bindings per step, interpolate before each expert call | Not Started |
 | 7 | Update `IExpertRunner.RunAsync` signature — accept context bag, not raw string | Not Started |
 | 8 | Update `MafExpertRunner` — extract `output` from context bag as the user message | Not Started |
-| 9 | Update CLI `fml run` — add `--var key=value` flag to inject values at call time (overrides `let` bindings) | Not Started |
-| 10 | Update `examples/build-operator/mission.fml` to use `let` bindings, params, and `with` clause | Not Started |
-| 11 | Update expert markdown files to use `{{goal}}` and `{{persona}}` placeholders | Not Started |
-| 12 | Parser tests — `let` bindings parse correctly; params round-trip; `with` clause produces correct AST | Not Started |
-| 13 | Runtime tests — interpolation; context seeding; `with` clause overrides; `--var` flag overrides `let` | Not Started |
-| 14 | Integration test — end-to-end run of extended `build-operator` example | Not Started |
+| 9 | Implement `env()` builtin — resolves env vars when seeding context bag; fails clearly if missing and no default | Not Started |
+| 10 | Update CLI `fml run` — add `--var key=value` flag to inject values at call time (overrides `let` bindings) | Not Started |
+| 11 | Update `examples/build-operator/mission.fml` to use `let` bindings, params, and `with` clause | Not Started |
+| 12 | Update expert markdown files to use `{{goal}}` and `{{persona}}` placeholders | Not Started |
+| 13 | Parser tests — `let` bindings parse correctly; `env()` call parses; params round-trip; `with` clause produces correct AST | Not Started |
+| 14 | Runtime tests — interpolation; context seeding; `env()` resolution; missing env var fails clearly; `with` overrides; `--var` overrides | Not Started |
+| 15 | Integration test — end-to-end run of extended `build-operator` example | Not Started |
 
 ## Notes
 
