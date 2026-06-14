@@ -16,10 +16,16 @@ Findings documented in `docs/findings.md`. Hypothesis either supported or refute
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Run `fml run` on `build-operator` example end-to-end | Not Started |
-| 2 | Run the same input against a single general-purpose prompt (no expert composition) | Not Started |
-| 3 | Compare outputs using evaluation rubric (see below) | Not Started |
-| 4 | Document findings in `docs/findings.md` | Not Started |
+| 1 | Run `fml run` on `build-operator` example end-to-end | Done |
+| 2 | Run the same input against a single general-purpose prompt (no expert composition) | Done |
+| 3 | Compare outputs using evaluation rubric (see below) | Done |
+| 4 | Document findings in `docs/findings.md` | Done |
+
+## Result
+
+Hypothesis **supported** on 5 of 6 criteria; 1 inconclusive (consistency, single run only).
+Key finding: single-prompt baseline made a critical RBAC correctness error (Role vs ClusterRole for cross-namespace watch).
+Full analysis in [docs/findings.md](../findings.md).
 
 ## Evaluation rubric
 
