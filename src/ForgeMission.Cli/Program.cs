@@ -22,7 +22,7 @@ return await rootCommand.Parse(args).InvokeAsync();
 
 static Command BuildInitCommand()
 {
-    var missionArg = new Argument<FileInfo>("mission") { Description = "Path to the .fms mission file" };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fml)", Arity = ArgumentArity.ZeroOrOne };
 
     var cmd = new Command("init", "Resolve expert sources and generate fms.lock");
     cmd.Add(missionArg);
@@ -82,7 +82,7 @@ static Command BuildInitCommand()
 
 static Command BuildRunCommand()
 {
-    var missionArg = new Argument<FileInfo>("mission") { Description = "Path to the .fms mission file" };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fml)", Arity = ArgumentArity.ZeroOrOne };
     var inputOpt   = new Option<FileInfo>("--input")   { Description = "Path to the input markdown file", Required = true };
     var outputOpt  = new Option<DirectoryInfo?>("--output") { Description = "Output directory (default: ./runs)" };
     var varOpt     = new Option<string[]>("--var")
@@ -100,7 +100,7 @@ static Command BuildRunCommand()
 
     cmd.SetAction(async result =>
     {
-        var mission   = result.GetValue(missionArg)!;
+        var mission   = ResolveMission(result.GetValue(missionArg));
         var input     = result.GetValue(inputOpt)!;
         var output    = result.GetValue(outputOpt);
         var vars      = result.GetValue(varOpt) ?? [];
@@ -159,14 +159,14 @@ static Command BuildRunCommand()
 
 static Command BuildValidateCommand()
 {
-    var missionArg = new Argument<FileInfo>("mission") { Description = "Path to the .fms mission file" };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fml)", Arity = ArgumentArity.ZeroOrOne };
 
     var cmd = new Command("validate", "Validate a mission file and its expert references");
     cmd.Add(missionArg);
 
     cmd.SetAction(async result =>
     {
-        var mission    = result.GetValue(missionArg)!;
+        var mission    = ResolveMission(result.GetValue(missionArg));
         var missionDir = mission.DirectoryName!;
         var lockPath   = Path.Combine(missionDir, "fms.lock");
 
@@ -353,6 +353,9 @@ static string ExpertTemplate(string name) => $"""
 
     Produce [output description].
     """;
+
+static FileInfo ResolveMission(FileInfo? arg)
+    => arg ?? new FileInfo("mission.fml");
 
 static void Die(string message)
 {
