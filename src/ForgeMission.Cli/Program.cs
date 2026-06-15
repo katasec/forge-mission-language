@@ -6,8 +6,8 @@ using ForgeMission.Core.Resolution;
 using ForgeMission.Core.Runtime;
 using static ForgeMission.Core.Runtime.MissionStatus;
 using Microsoft.Extensions.AI;
-using Azure.AI.OpenAI;
 using OpenAI;
+using System.ClientModel;
 using MclProgram = ForgeMission.Core.Parser.Program;
 
 var rootCommand = new RootCommand("forge — Mission Control Language runtime");
@@ -353,45 +353,17 @@ static bool TryValidate(MclProgram ast, Dictionary<string, ExpertDefinition> exp
 
 static IExpertRunner? TryBuildRunner(string provider, string apiKey, string model, string endpoint)
 {
-    // Default endpoints per provider. null = SDK resolves internally.
-    var providerDefaults = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+    if (!provider.Equals("openai", StringComparison.OrdinalIgnoreCase))
     {
-        ["openai"]    = null,
-        ["azure"]     = null,   // deployment-specific — must set MCL_ENDPOINT
-        ["anthropic"] = null,   // SDK resolves internally (not yet supported)
-    };
-
-    if (!providerDefaults.TryGetValue(provider, out var defaultEndpoint))
-    {
-        var supported = string.Join(", ", providerDefaults.Keys);
-        Die($"Unknown provider '{provider}'. Supported: {supported}");
+        Die($"Unknown provider '{provider}'. Supported: openai");
         return null;
     }
 
-    var resolvedEndpoint = !string.IsNullOrWhiteSpace(endpoint) ? endpoint : defaultEndpoint;
+    var options = new OpenAIClientOptions();
+    if (!string.IsNullOrWhiteSpace(endpoint))
+        options.Endpoint = new Uri(endpoint);
 
-    IChatClient chatClient = provider.ToLowerInvariant() switch
-    {
-        "openai" => new OpenAIClient(apiKey).GetChatClient(model).AsIChatClient(),
-
-        "azure" when !string.IsNullOrWhiteSpace(resolvedEndpoint) =>
-            new AzureOpenAIClient(new Uri(resolvedEndpoint), new Azure.AzureKeyCredential(apiKey))
-                .GetChatClient(model).AsIChatClient(),
-
-        "azure" => null!,  // caught below
-
-        "anthropic" => throw new NotSupportedException(
-            "Anthropic provider is not yet supported."),
-
-        _ => null!
-    };
-
-    if (chatClient is null)
-    {
-        Die($"Provider '{provider}' requires an endpoint: let endpoint = env(\"MCL_ENDPOINT\")");
-        return null;
-    }
-
+    var chatClient = new OpenAIClient(new ApiKeyCredential(apiKey), options).GetChatClient(model).AsIChatClient();
     return new DirectExpertRunner(chatClient);
 }
 
