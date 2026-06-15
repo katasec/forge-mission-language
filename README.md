@@ -97,11 +97,11 @@ An Agent answers: **How does a user consume this capability?**
 
 ## OCI-distributed experts
 
-One of the most significant aspects of MCL is how experts are distributed.
+OCI distributes expertise. Missions codify how that expertise is applied.
 
-Experts are not prompts. They are packaged expertise — versioned, addressable, and shareable across projects and teams.
+These are deliberately separate concerns. An expert is packaged intelligence — versioned, addressable, and shareable across projects and teams. A mission is the thinking model that decides which experts engage and how their outputs build on each other. You can swap the experts without changing the thinking model, and evolve the thinking model without touching the experts.
 
-MCL uses OCI (Open Container Initiative) registries as the distribution mechanism. The same infrastructure that distributes container images and Helm charts now distributes expertise:
+MCL uses OCI (Open Container Initiative) registries as the distribution mechanism for expertise. The same infrastructure that distributes container images and Helm charts now distributes domain intelligence:
 
 ```fsharp
 expert SecurityArchitect =
@@ -112,10 +112,10 @@ expert SecurityArchitect =
 `forge init` resolves expert references and caches them in `~/.forge/experts/`. The `mcl.lock` file records exactly what was resolved, mirroring Terraform's plan/apply discipline.
 
 ```bash
-forge init                       # pull experts from OCI, generate mcl.lock
-forge run                        # run with resolved experts
-forge clean                      # purge the local cache
-forge clean --registry ghcr.io   # purge one registry
+forge init                        # pull experts from OCI, generate mcl.lock
+forge run                         # run with resolved experts
+forge clean                       # purge the local cache
+forge clean --registry ghcr.io    # purge one registry
 forge login ghcr.io --token <pat> # authenticate to a private registry
 ```
 
