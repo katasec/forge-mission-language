@@ -74,9 +74,9 @@ public class ExpertLoader(string expertsDirectory)
         var allSteps = ast.Declarations
             .SelectMany(d => d switch
             {
-                MissionDeclaration m => m.Pipeline.Steps.Select(s => s.ExpertName),
-                ExpertDeclaration e  => e.Pipeline.Steps.Select(s => s.ExpertName),
-                _                    => Enumerable.Empty<string>()
+                MissionDeclaration m                          => m.Pipeline.Steps.Select(s => s.ExpertName),
+                ExpertDeclaration { Pipeline: { } p }         => p.Steps.Select(s => s.ExpertName),
+                _                                             => Enumerable.Empty<string>()
             })
             .Distinct(StringComparer.Ordinal);
 

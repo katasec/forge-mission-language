@@ -18,7 +18,9 @@ public abstract record Declaration(string Name);
 public record MissionDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline, int MaxLoops = 1)
     : Declaration(Name);
 
-public record ExpertDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline)
+public record OciSource(string Registry, string Version);
+
+public record ExpertDeclaration(string Name, IReadOnlyList<string> Params, Pipeline? Pipeline, OciSource? Source = null)
     : Declaration(Name);
 
 public record Pipeline(IReadOnlyList<Step> Steps);

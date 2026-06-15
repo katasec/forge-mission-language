@@ -9,7 +9,8 @@ public enum MclErrorCode
     SourceNotFound         = 5,
     StaleLockFile          = 6,
     NotInitialised         = 7,
-    OciNotSupported        = 10,
+    OciNotPulled           = 10,
+    OciPullFailed          = 11,
 }
 
 public class MclException(MclErrorCode code, string message, string? detail = null)

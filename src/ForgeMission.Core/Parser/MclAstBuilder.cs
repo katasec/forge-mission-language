@@ -59,8 +59,17 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
 
     public override object? VisitExpert(MclGrammarParser.ExpertContext ctx)
     {
-        var name     = ctx.UPPER_ID().GetText();
-        var @params  = ParseParams(ctx.@params());
+        var name    = ctx.UPPER_ID().GetText();
+        var @params = ParseParams(ctx.@params());
+
+        if (ctx.ociSource() is { } oci)
+        {
+            var strings = oci.STRING();
+            var registry = StripQuotes(strings[0].GetText());
+            var version  = StripQuotes(strings[1].GetText());
+            return new ExpertDeclaration(name, @params, Pipeline: null, Source: new OciSource(registry, version));
+        }
+
         var pipeline = (Pipeline)Visit(ctx.pipeline())!;
         return new ExpertDeclaration(name, @params, pipeline);
     }

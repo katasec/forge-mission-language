@@ -14,7 +14,7 @@
 | [Phase 8 — ANTLR Migration](phases/phase-8-antlr-migration.md) | Replace hand-rolled parser with ANTLR4-generated parser, existing tests as regression gate | Done |
 | [Phase 9 — Variables](phases/phase-9-variables.md) | `let` bindings, mission parameters, per-step `with` clauses, context bag runtime | Done |
 | [Phase 10 — Expert Resolution](phases/phase-10-expert-resolution.md) | `use` declarations, directory-per-expert, `mcl init`, lock file, error codes | Done |
-| [Phase 11 — OCI Source Support](phases/phase-11-oci-sources.md) | `use "oci://..."` runtime resolution, pull from OCI registry | Blocked |
+| [Phase 11 — OCI Source Support](phases/phase-11-oci-sources.md) | `expert … from/version` grammar, OCI pull into `./experts`, `forge login`; prerequisite library published | Ready |
 | [Phase 12 — StepEnvelope](phases/phase-12-step-envelope.md) | Structured JSON envelope flowing through pipeline; fail-fast on any step failure; `MissionResult` carries status | Done |
 | ~~Phase 13 — passes when~~ | Dropped — failure is declared in the expert MD, not the mission grammar. Bash exit-code model: all steps pass by default; any step returning `fail` stops the mission. | Dropped |
 | [Phase 14 — loop N](phases/phase-14-loop.md) | `loop N` on the mission declaration; reserved variables `{{attempt}}` and `{{max_loops}}` injected by runtime | Done |
@@ -24,6 +24,7 @@
 | [Phase 17 — Provider Configuration](phases/phase-17-provider-config.md) | Make LLM provider fully configurable via `let` bindings (`provider`, `apiKey`, `model`, `endpoint`). Remove hardcoded OpenAI from CLI. | Done |
 | [Phase 18 — Drop MAF](phases/phase-18-drop-maf.md) | Replace `MafExpertRunner` with `DirectExpertRunner` (direct `IChatClient` calls). Remove `Microsoft.Agents.AI` packages. Primary AOT unblocking step. | Done |
 | Phase 19 — Agent Runtime Design | Design how an `agent` declaration spawns, manages conversational context/continuity, and surfaces missions behind OpenAI-compatible and native interfaces. Covers: agent grammar, runtime lifecycle, session management, interface adapters. | Design |
+| Phase 20 — Parser Project Extraction | Move `ForgeMission.Core/Parser` into a standalone `ForgeMission.Parser` project. Clean compiler/runtime boundary; enables reuse in tooling (language server, IDE plugins). Do after Phase 11 when seams are clear from experience. | Planned |
 
 ## Under discussion
 

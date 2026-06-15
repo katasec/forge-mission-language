@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from src/ForgeMission.Core/Parser/MclGrammar.g4 by ANTLR 4.13.1
+// Generated from MclGrammar.g4 by ANTLR 4.13.1
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -111,6 +111,16 @@ public interface IMclGrammarListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitExpert([NotNull] MclGrammarParser.ExpertContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.ociSource"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterOciSource([NotNull] MclGrammarParser.OciSourceContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.ociSource"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitOciSource([NotNull] MclGrammarParser.OciSourceContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.params"/>.
 	/// </summary>

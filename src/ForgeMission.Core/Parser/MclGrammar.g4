@@ -32,7 +32,11 @@ loopClause
     ;
 
 expert
-    : EXPERT UPPER_ID params? EQUALS pipeline
+    : EXPERT UPPER_ID params? EQUALS (ociSource | pipeline)
+    ;
+
+ociSource
+    : FROM STRING VERSION STRING
     ;
 
 params
@@ -71,6 +75,8 @@ USE     : 'use'     ;
 LET     : 'let'     ;
 MISSION : 'mission' ;
 EXPERT  : 'expert'  ;
+FROM    : 'from'    ;
+VERSION : 'version' ;
 WITH    : 'with'    ;
 ENV     : 'env'     ;
 OUTPUT  : 'output'  ;

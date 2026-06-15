@@ -8,6 +8,7 @@ using static ForgeMission.Core.Runtime.MissionStatus;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using System.ClientModel;
+using Katasec.OciClient;
 using MclProgram = ForgeMission.Core.Parser.Program;
 
 var rootCommand = new RootCommand("forge — Mission Control Language runtime");
@@ -16,6 +17,7 @@ rootCommand.Add(BuildRunCommand());
 rootCommand.Add(BuildValidateCommand());
 rootCommand.Add(BuildListCommand());
 rootCommand.Add(BuildExpertCommand());
+rootCommand.Add(BuildLoginCommand());
 
 return await rootCommand.Parse(args).InvokeAsync();
 
@@ -24,15 +26,18 @@ return await rootCommand.Parse(args).InvokeAsync();
 
 static Command BuildInitCommand()
 {
-    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
+    var missionArg  = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
+    var refreshOpt  = new Option<bool>("--refresh") { Description = "Re-pull OCI experts even if already present in ./experts" };
 
     var cmd = new Command("init", "Resolve expert sources and generate mcl.lock");
     cmd.Add(missionArg);
+    cmd.Add(refreshOpt);
 
     cmd.SetAction(async result =>
     {
-        var mission = ResolveMission(result.GetValue(missionArg));
+        var mission    = ResolveMission(result.GetValue(missionArg));
         var missionDir = mission.DirectoryName!;
+        var refresh    = result.GetValue(refreshOpt);
 
         var source = await TryReadFile(mission.FullName);
         if (source is null) return;
@@ -41,6 +46,56 @@ static Command BuildInitCommand()
         if (ast is null) return;
 
         Console.WriteLine("Resolving experts...\n");
+
+        // Pull OCI experts declared in the .mcl into ./experts
+        var ociDecls = ast.Declarations.OfType<ExpertDeclaration>()
+            .Where(e => e.Source is not null)
+            .ToList();
+
+        if (ociDecls.Count > 0)
+        {
+            var expertsDir = Path.Combine(missionDir, SourceResolver.DefaultExpertsDir);
+            Directory.CreateDirectory(expertsDir);
+
+            foreach (var decl in ociDecls)
+            {
+                var dest = Path.Combine(expertsDir, decl.Name, "expert.md");
+                if (File.Exists(dest) && !refresh)
+                {
+                    Console.WriteLine($"  ✓ {decl.Name}  (cached)");
+                    continue;
+                }
+
+                var src = decl.Source!;
+                // Split "ghcr.io/katasec/forge-kubernetes-architect" into registry + name
+                var slash  = src.Registry.IndexOf('/');
+                var registry = slash >= 0 ? src.Registry[..slash] : src.Registry;
+                var name     = slash >= 0 ? src.Registry[(slash + 1)..] : src.Registry;
+
+                Console.Write($"  ↓ {decl.Name}  ({src.Registry}:{src.Version}) ... ");
+                try
+                {
+                    var token = CredentialStore.GetToken(registry);
+                    using var client = new OciClient(token);
+                    var content = await client.PullExpertAsync(registry, name, src.Version);
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                    await File.WriteAllTextAsync(dest, content);
+                    Console.WriteLine("done");
+                }
+                catch (OciAuthException ex)
+                {
+                    Console.WriteLine();
+                    Die($"MCL011 Authentication failed pulling {decl.Name}: {ex.Message}\n\nRun: forge login {registry} --token <token>");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine();
+                    Die($"MCL011 Failed to pull {decl.Name} from {src.Registry}:{src.Version}: {ex.Message}");
+                    return;
+                }
+            }
+        }
 
         Dictionary<string, ResolvedExpert> catalog;
         try
@@ -53,19 +108,25 @@ static Command BuildInitCommand()
             return;
         }
 
-        Console.WriteLine($"  ✓ experts  ({catalog.Count} found)");
+        Console.WriteLine($"\n  ✓ experts  ({catalog.Count} found)");
 
         Console.WriteLine("\nResolved:");
         foreach (var (name, _) in catalog.OrderBy(k => k.Key))
             Console.WriteLine($"  {name}");
 
         var lockFile = LockFileIO.Build(catalog, missionDir);
+
+        // Record OCI source refs for experts pulled from a registry
+        foreach (var decl in ociDecls)
+        {
+            if (lockFile.Experts.TryGetValue(decl.Name, out var entry))
+                entry.Source = $"{decl.Source!.Registry}:{decl.Source.Version}";
+        }
+
         var lockPath = Path.Combine(missionDir, "mcl.lock");
         LockFileIO.Write(lockPath, lockFile);
 
         Console.WriteLine($"\nGenerated {lockPath}");
-
-        await Task.CompletedTask;
     });
 
     return cmd;
@@ -112,6 +173,18 @@ static Command BuildRunCommand()
 
         var ast = TryParse(source);
         if (ast is null) return;
+
+        // Pass 2: assert OCI experts have been pulled
+        var expertsDir = Path.Combine(missionDir, SourceResolver.DefaultExpertsDir);
+        foreach (var decl in ast.Declarations.OfType<ExpertDeclaration>().Where(e => e.Source is not null))
+        {
+            var expertMd = Path.Combine(expertsDir, decl.Name, "expert.md");
+            if (!File.Exists(expertMd))
+            {
+                Die($"MCL010 Expert '{decl.Name}' not resolved — run 'forge init' to pull remote experts");
+                return;
+            }
+        }
 
         LockFile lockFile;
         try { lockFile = LockFileIO.Read(lockPath); }
@@ -301,6 +374,32 @@ static Command BuildExpertCommand()
 
     expertCommand.Add(initExpertCmd);
     return expertCommand;
+}
+
+// ---------------------------------------------------------------------------
+// forge login
+
+static Command BuildLoginCommand()
+{
+    var registryArg = new Argument<string>("registry") { Description = "Registry host (e.g. ghcr.io)" };
+    var tokenOpt    = new Option<string>("--token") { Description = "Credential token (e.g. GitHub PAT)" };
+
+    var cmd = new Command("login", "Save registry credentials to ~/.forge/credentials.json");
+    cmd.Add(registryArg);
+    cmd.Add(tokenOpt);
+
+    cmd.SetAction(async result =>
+    {
+        var registry = result.GetValue(registryArg)!;
+        var token    = result.GetValue(tokenOpt)!;
+
+        CredentialStore.SaveToken(registry, token);
+        Console.WriteLine($"Credentials saved for {registry}");
+
+        await Task.CompletedTask;
+    });
+
+    return cmd;
 }
 
 // ---------------------------------------------------------------------------
