@@ -85,7 +85,7 @@ public class ExpertLoader(string expertsDirectory)
         if (missing.Count > 0)
             throw new ExpertLoadException(
                 $"Missing expert definitions for: {string.Join(", ", missing)}. " +
-                "Each expert must be declared in the .fml file or have a matching markdown file in the experts directory.");
+                "Each expert must be declared in the .mcl file or have a matching markdown file in the experts directory.");
     }
 
     internal static ExpertDefinition ParseFile(string path)
