@@ -31,7 +31,7 @@ public class PipelineRunner(IExpertRunner expertRunner)
             if (options.StepWriter is { } sw && maxLoops > 1)
                 await sw.WriteLineAsync($"(attempt {attempt}/{maxLoops})");
 
-            var context = SeedContext(ast, options);
+            var context = ContextBuilder.Seed(ast, options.Vars);
             context["attempt"]   = attempt.ToString();
             context["max_loops"] = maxLoops.ToString();
 
@@ -47,7 +47,7 @@ public class PipelineRunner(IExpertRunner expertRunner)
                         "Run 'mcl validate' to check your mission before running.");
 
                 foreach (var binding in step.With)
-                    context[binding.Key] = ResolveBindingValue(binding.Value, context);
+                    context[binding.Key] = ContextBuilder.ResolveBindingValue(binding.Value, context);
 
                 if (options.StepWriter is { } sw2)
                     await sw2.WriteLineAsync($"→ {step.ExpertName}...");
@@ -103,48 +103,6 @@ public class PipelineRunner(IExpertRunner expertRunner)
             return new StepEnvelope(raw);
         }
     }
-
-    private static Dictionary<string, object> SeedContext(Program ast, PipelineRunOptions options)
-    {
-        var context = new Dictionary<string, object>(StringComparer.Ordinal);
-
-        foreach (var binding in ast.Bindings)
-            context[binding.Name] = ResolveLetValue(binding.Value, binding.Name);
-
-        context["output"] = string.Empty;
-
-        if (options.Vars is { } vars)
-            foreach (var (key, value) in vars)
-                context[key] = value;
-
-        return context;
-    }
-
-    private static string ResolveLetValue(LetValue value, string bindingName) => value switch
-    {
-        StringLetValue v => v.Text,
-        EnvLetValue v    => ResolveEnv(v.VarName, v.DefaultValue, bindingName),
-        _                => throw new InvalidOperationException($"Unknown let value type for '{bindingName}'")
-    };
-
-    private static string ResolveEnv(string varName, string? defaultValue, string bindingName)
-    {
-        var val = Environment.GetEnvironmentVariable(varName);
-        if (val is not null) return val;
-        if (defaultValue is not null) return defaultValue;
-        throw new InvalidOperationException(
-            $"Required environment variable '{varName}' (used by let binding '{bindingName}') is not set.");
-    }
-
-    private static string ResolveBindingValue(BindingValue value, Dictionary<string, object> context) => value switch
-    {
-        StringBindingValue v => v.Text,
-        VarRefBindingValue v => context.TryGetValue(v.Name, out var ctx)
-            ? ctx.ToString()!
-            : throw new InvalidOperationException($"Variable '{v.Name}' not found in context"),
-        EnvBindingValue v    => ResolveEnv(v.VarName, v.DefaultValue, v.VarName),
-        _                    => throw new InvalidOperationException("Unknown binding value type")
-    };
 
     private static List<Step> Flatten(Pipeline pipeline, Program ast)
     {

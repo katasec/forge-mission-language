@@ -130,8 +130,22 @@ static Command BuildRunCommand()
 
         if (!TryValidate(ast, expertDefs)) return;
 
-        var runner = TryBuildRunner();
-        if (runner is null) return;
+        Dictionary<string, object> seedContext;
+        try { seedContext = ContextBuilder.Seed(ast, parsedVars); }
+        catch (InvalidOperationException ex) { Die(ex.Message); return; }
+
+        if (!seedContext.TryGetValue("apiKey", out var apiKeyObj) || string.IsNullOrWhiteSpace(apiKeyObj?.ToString()))
+        {
+            Die("Mission must declare an API key: let apiKey = env(\"OPENAI_API_KEY\")");
+            return;
+        }
+        if (!seedContext.TryGetValue("model", out var modelObj) || string.IsNullOrWhiteSpace(modelObj?.ToString()))
+        {
+            Die("Mission must declare a model: let model = env(\"MCL_MODEL\", \"gpt-4o-mini\")");
+            return;
+        }
+
+        var runner = TryBuildRunner(apiKeyObj.ToString()!, modelObj.ToString()!);
 
         var firstMission = ast.Declarations.OfType<MissionDeclaration>().FirstOrDefault();
         if (firstMission is null) { Die("No mission declaration found in mission file."); return; }
@@ -328,11 +342,9 @@ static bool TryValidate(MclProgram ast, Dictionary<string, ExpertDefinition> exp
     catch (ExpertLoadException ex) { Die(ex.Message); return false; }
 }
 
-static IExpertRunner? TryBuildRunner()
+static IExpertRunner TryBuildRunner(string apiKey, string model)
 {
-    var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey)) { Die("OPENAI_API_KEY environment variable is not set."); return null; }
-    var chatClient = new OpenAIClient(apiKey).GetChatClient("gpt-4o-mini").AsIChatClient();
+    var chatClient = new OpenAIClient(apiKey).GetChatClient(model).AsIChatClient();
     return new MafExpertRunner(chatClient);
 }
 
