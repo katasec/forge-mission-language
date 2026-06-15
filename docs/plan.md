@@ -14,6 +14,12 @@
 | [Phase 8 — ANTLR Migration](phases/phase-8-antlr-migration.md) | Replace hand-rolled parser with ANTLR4-generated parser, existing tests as regression gate | Done |
 | [Phase 9 — Variables](phases/phase-9-variables.md) | `let` bindings, mission parameters, per-step `with` clauses, context bag runtime | Done |
 | [Phase 10 — Expert Resolution](phases/phase-10-expert-resolution.md) | `use` declarations, directory-per-expert, `fms init`, lock file, error codes | Done |
+| [Phase 11 — OCI Source Support](phases/phase-11-oci-sources.md) | `use "oci://..."` runtime resolution, pull from OCI registry | Blocked |
+| [Phase 12 — StepEnvelope](phases/phase-12-step-envelope.md) | Structured JSON envelope flowing through pipeline; fail-fast on any step failure; `MissionResult` carries status | Pending |
+| [Phase 13 — passes when](phases/phase-13-passes-when.md) | Grammar + runtime for mission-level pass/fail condition; `passes when <StepName>` declares the quality gate | Pending |
+| [Phase 14 — output() Retry](phases/phase-14-output-retry.md) | `output(Mission) retry N` — re-run mission up to N times until it passes | Pending |
+| [Phase 15 — Token Streaming](phases/phase-15-streaming.md) | `IAsyncEnumerable<string>` from runner; chunks forwarded to `StepWriter` live; no more silent wait per expert | Pending |
+| [Phase 16 — FML → FMS Rename](phases/phase-16-fms-rename.md) | Surface rename: CLI binary `fml`→`fms`, extension `.fml`→`.fms`, docs. C# namespaces unchanged. | Pending |
 
 ## Design docs
 
