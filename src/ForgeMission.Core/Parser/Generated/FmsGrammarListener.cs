@@ -92,6 +92,16 @@ public interface IFmsGrammarListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitMission([NotNull] FmsGrammarParser.MissionContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="FmsGrammarParser.expert"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

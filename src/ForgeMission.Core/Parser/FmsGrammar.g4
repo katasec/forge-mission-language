@@ -24,7 +24,11 @@ outputDecl
     ;
 
 mission
-    : MISSION UPPER_ID params? EQUALS pipeline
+    : MISSION UPPER_ID params? EQUALS pipeline loopClause?
+    ;
+
+loopClause
+    : LOOP INT
     ;
 
 expert
@@ -70,6 +74,8 @@ EXPERT  : 'expert'  ;
 WITH    : 'with'    ;
 ENV     : 'env'     ;
 OUTPUT  : 'output'  ;
+LOOP    : 'loop'    ;
+INT     : [0-9]+    ;
 PIPE    : '|>'      ;
 EQUALS  : '='       ;
 LPAREN  : '('       ;

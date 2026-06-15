@@ -18,7 +18,7 @@ public record EnvLetValue(string VarName, string? DefaultValue) : LetValue;
 
 public abstract record Declaration(string Name);
 
-public record MissionDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline)
+public record MissionDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline, int MaxLoops = 1)
     : Declaration(Name);
 
 public record ExpertDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline)

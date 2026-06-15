@@ -1,6 +1,7 @@
 using ForgeMission.Core.Experts;
 using ForgeMission.Core.Parser;
 using ForgeMission.Core.Runtime;
+using static ForgeMission.Core.Runtime.MissionStatus;
 
 namespace ForgeMission.Tests.Runtime;
 
@@ -171,5 +172,176 @@ public class PipelineRunnerTests
                 .GetAwaiter().GetResult());
 
         Assert.Contains("FMLTEST_MISSING_VAR_XYZ", ex.Message);
+    }
+
+    // Phase 12 — StepEnvelope / fail-fast
+
+    [Fact]
+    public async Task StepFail_StopsImmediately_SecondStepNeverCalled()
+    {
+        var ast = FmsParser.Parse("""
+            mission BuildOperator =
+                KubernetesArchitect
+                |> SecurityArchitect
+            """);
+
+        var stub = new StubExpertRunner((name, _) =>
+            name == "KubernetesArchitect"
+                ? new StepEnvelope("bad output", "fail", "quality too low")
+                : new StepEnvelope($"Output from {name}"));
+
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("KubernetesArchitect", "SecurityArchitect"),
+                      new PipelineRunOptions("BuildOperator"));
+
+        Assert.Single(stub.Calls);
+        Assert.Equal(MissionStatus.Fail, result.Status);
+        Assert.Contains("KubernetesArchitect", result.FailReason);
+        Assert.Contains("quality too low", result.FailReason);
+    }
+
+    [Fact]
+    public async Task StepPass_PipelineContinues()
+    {
+        var ast = FmsParser.Parse("""
+            mission BuildOperator =
+                KubernetesArchitect
+                |> SecurityArchitect
+            """);
+
+        var stub   = new StubExpertRunner();
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("KubernetesArchitect", "SecurityArchitect"),
+                      new PipelineRunOptions("BuildOperator"));
+
+        Assert.Equal(2, stub.Calls.Count);
+        Assert.Equal(MissionStatus.Pass, result.Status);
+    }
+
+    // Phase 14 — loop N
+
+    [Fact]
+    public async Task Loop_RetriesUntilAllStepsPass()
+    {
+        var ast = FmsParser.Parse("""
+            mission RefinedPitch =
+                Drafter
+                |> Judge
+                loop 3
+            """);
+
+        var callCount = 0;
+        var stub = new StubExpertRunner((name, _) =>
+        {
+            callCount++;
+            if (name == "Judge" && callCount <= 2)
+                return new StepEnvelope("fail output", "fail", "not good enough");
+            return new StepEnvelope($"Output from {name}");
+        });
+
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Drafter", "Judge"),
+                      new PipelineRunOptions("RefinedPitch"));
+
+        Assert.Equal(MissionStatus.Pass, result.Status);
+        Assert.Equal(2, result.Attempts);
+    }
+
+    [Fact]
+    public async Task Loop_ExhaustedFails_SurfacesLastFailReason()
+    {
+        var ast = FmsParser.Parse("""
+            mission RefinedPitch =
+                Drafter
+                |> Judge
+                loop 3
+            """);
+
+        var stub = new StubExpertRunner((name, _) =>
+            name == "Judge"
+                ? new StepEnvelope("bad output", "fail", "never good enough")
+                : new StepEnvelope($"Output from {name}"));
+
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Drafter", "Judge"),
+                      new PipelineRunOptions("RefinedPitch"));
+
+        Assert.Equal(MissionStatus.Fail, result.Status);
+        Assert.Equal(3, result.Attempts);
+        Assert.Contains("never good enough", result.FailReason);
+    }
+
+    [Fact]
+    public async Task AttemptVariable_InjectedEachAttempt()
+    {
+        var ast = FmsParser.Parse("""
+            mission Demo =
+                Worker
+                loop 3
+            """);
+
+        var attempts = new List<string>();
+        var stub = new StubExpertRunner((name, ctx) =>
+        {
+            attempts.Add(ctx["attempt"].ToString()!);
+            return new StepEnvelope("done", "fail", "retry");
+        });
+
+        await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Worker"), new PipelineRunOptions("Demo"));
+
+        Assert.Equal(["1", "2", "3"], attempts);
+    }
+
+    [Fact]
+    public async Task MaxLoopsVariable_InjectedEachAttempt()
+    {
+        var ast = FmsParser.Parse("""
+            mission Demo =
+                Worker
+                loop 5
+            """);
+
+        var maxLoopsValues = new List<string>();
+        var stub = new StubExpertRunner((name, ctx) =>
+        {
+            maxLoopsValues.Add(ctx["max_loops"].ToString()!);
+            return new StepEnvelope("done");
+        });
+
+        await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Worker"), new PipelineRunOptions("Demo"));
+
+        Assert.All(maxLoopsValues, v => Assert.Equal("5", v));
+    }
+
+    [Fact]
+    public async Task NoLoop_AttemptAndMaxLoopsDefaultToOne()
+    {
+        var ast  = FmsParser.Parse("mission Demo = Worker");
+        var stub = new StubExpertRunner();
+
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Worker"), new PipelineRunOptions("Demo"));
+
+        Assert.Equal("1", stub.Calls[0].Context["attempt"].ToString());
+        Assert.Equal("1", stub.Calls[0].Context["max_loops"].ToString());
+        Assert.Equal(1, result.Attempts);
+    }
+
+    [Fact]
+    public void LoopN_ParsedIntoMissionDeclaration()
+    {
+        var ast     = FmsParser.Parse("mission Demo = Worker loop 4");
+        var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
+        Assert.Equal(4, mission.MaxLoops);
+    }
+
+    [Fact]
+    public void NoLoop_MaxLoopsDefaultsToOne()
+    {
+        var ast     = FmsParser.Parse("mission Demo = Worker");
+        var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
+        Assert.Equal(1, mission.MaxLoops);
     }
 }

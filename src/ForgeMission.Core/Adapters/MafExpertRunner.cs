@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ForgeMission.Core.Experts;
 using ForgeMission.Core.Runtime;
 using Microsoft.Agents.AI;
@@ -11,7 +12,12 @@ namespace ForgeMission.Core.Adapters;
 /// </summary>
 public class MafExpertRunner(IChatClient chatClient) : IExpertRunner
 {
-    public async Task<string> RunAsync(
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public async Task<StepEnvelope> RunAsync(
         ExpertDefinition expert,
         Dictionary<string, object> context,
         CancellationToken ct = default)
@@ -22,9 +28,9 @@ public class MafExpertRunner(IChatClient chatClient) : IExpertRunner
 
         var systemPrompt = ContextInterpolator.Interpolate(expert.SystemPrompt, context);
 
-        var agent   = new ChatClientAgent(chatClient, systemPrompt, expert.Name);
-        var session = await agent.CreateSessionAsync(ct);
-        var response = await agent.RunAsync(userMessage, session, new ChatClientAgentRunOptions(), ct);
-        return response.Text;
+        var agent    = new ChatClientAgent(chatClient, systemPrompt, expert.Name);
+        var session  = await agent.CreateSessionAsync(ct);
+        var response = await agent.RunAsync<StepEnvelope>(userMessage, session, _jsonOptions, new ChatClientAgentRunOptions(), ct);
+        return response.Result;
     }
 }

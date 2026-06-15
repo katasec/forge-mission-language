@@ -109,6 +109,18 @@ public partial class FmsGrammarBaseListener : IFmsGrammarListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitMission([NotNull] FmsGrammarParser.MissionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="FmsGrammarParser.expert"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

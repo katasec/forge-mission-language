@@ -4,6 +4,7 @@ using ForgeMission.Core.Experts;
 using ForgeMission.Core.Parser;
 using ForgeMission.Core.Resolution;
 using ForgeMission.Core.Runtime;
+using static ForgeMission.Core.Runtime.MissionStatus;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using FmsProgram = ForgeMission.Core.Parser.Program;
@@ -143,6 +144,13 @@ static Command BuildRunCommand()
         Console.Error.WriteLine($"Running mission '{firstMission.Name}'...");
 
         var missionResult = await new PipelineRunner(runner).RunAsync(ast, expertDefs, options);
+
+        if (missionResult.Status == MissionStatus.Fail)
+        {
+            Console.Error.WriteLine($"error: mission failed — {missionResult.FailReason}");
+            Environment.Exit(1);
+            return;
+        }
 
         var outputDecl = ast.Outputs.FirstOrDefault(o => o.MissionName == firstMission.Name);
         if (outputDecl?.FilePath is { } filePath)

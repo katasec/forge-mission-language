@@ -1,3 +1,10 @@
 namespace ForgeMission.Core.Runtime;
 
-public record MissionResult(string MissionName, string Text);
+public enum MissionStatus { Pass, Fail }
+
+public record MissionResult(
+    string MissionName,
+    string Text,
+    MissionStatus Status = MissionStatus.Pass,
+    string? FailReason = null,
+    int Attempts = 1);

@@ -37,7 +37,7 @@ public class MafExpertRunnerIntegrationTests
         var context = new Dictionary<string, object> { ["output"] = "The sky is blue because of Rayleigh scattering of sunlight." };
         var result = await runner.RunAsync(expert, context);
 
-        Assert.False(string.IsNullOrWhiteSpace(result));
+        Assert.False(string.IsNullOrWhiteSpace(result.Text));
     }
 
     [SkippableFact]

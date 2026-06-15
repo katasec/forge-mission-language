@@ -69,6 +69,12 @@ public interface IFmsGrammarVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitMission([NotNull] FmsGrammarParser.MissionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="FmsGrammarParser.expert"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

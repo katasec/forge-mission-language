@@ -52,7 +52,8 @@ internal class FmsAstBuilder : FmsGrammarBaseVisitor<object?>
         var name     = ctx.UPPER_ID().GetText();
         var @params  = ParseParams(ctx.@params());
         var pipeline = (Pipeline)Visit(ctx.pipeline())!;
-        return new MissionDeclaration(name, @params, pipeline);
+        var maxLoops = ctx.loopClause() is { } lc ? int.Parse(lc.INT().GetText()) : 1;
+        return new MissionDeclaration(name, @params, pipeline, maxLoops);
     }
 
     public override object? VisitExpert(FmsGrammarParser.ExpertContext ctx)

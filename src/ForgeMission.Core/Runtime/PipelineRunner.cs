@@ -15,36 +15,64 @@ public class PipelineRunner(IExpertRunner expertRunner)
             .OfType<MissionDeclaration>()
             .FirstOrDefault(m => m.Name == options.MissionName)
             ?? throw new InvalidOperationException(
-                $"Mission '{options.MissionName}' not found in .fml file");
+                $"Mission '{options.MissionName}' not found in .fms file");
 
-        var context = SeedContext(ast, options);
-        var steps   = Flatten(mission.Pipeline, ast);
+        var maxLoops = mission.MaxLoops;
+        var steps    = Flatten(mission.Pipeline, ast);
 
-        foreach (var step in steps)
+        MissionResult? lastResult = null;
+
+        for (var attempt = 1; attempt <= maxLoops; attempt++)
         {
             ct.ThrowIfCancellationRequested();
 
-            if (!experts.TryGetValue(step.ExpertName, out var expert))
-                throw new InvalidOperationException(
-                    $"Expert '{step.ExpertName}' not found. " +
-                    "Run 'fml validate' to check your mission before running.");
+            if (options.StepWriter is { } sw && maxLoops > 1)
+                await sw.WriteLineAsync($"(attempt {attempt}/{maxLoops})");
 
-            foreach (var binding in step.With)
-                context[binding.Key] = ResolveBindingValue(binding.Value, context);
+            var context = SeedContext(ast, options);
+            context["attempt"]   = attempt.ToString();
+            context["max_loops"] = maxLoops.ToString();
 
-            if (options.StepWriter is { } sw)
-                await sw.WriteLineAsync($"→ {step.ExpertName}...");
+            string? failReason = null;
 
-            var output = await expertRunner.RunAsync(expert, context, ct);
+            foreach (var step in steps)
+            {
+                ct.ThrowIfCancellationRequested();
 
-            if (options.StepWriter is { } sw2)
-                await sw2.WriteLineAsync($"{output}\n");
+                if (!experts.TryGetValue(step.ExpertName, out var expert))
+                    throw new InvalidOperationException(
+                        $"Expert '{step.ExpertName}' not found. " +
+                        "Run 'fms validate' to check your mission before running.");
 
-            context["output"] = output;
+                foreach (var binding in step.With)
+                    context[binding.Key] = ResolveBindingValue(binding.Value, context);
+
+                if (options.StepWriter is { } sw2)
+                    await sw2.WriteLineAsync($"→ {step.ExpertName}...");
+
+                var envelope = await expertRunner.RunAsync(expert, context, ct);
+
+                if (options.StepWriter is { } sw3)
+                    await sw3.WriteLineAsync($"{envelope.Text}\n");
+
+                context["output"] = envelope.Text;
+
+                if (envelope.Status == "fail")
+                {
+                    failReason = $"[{step.ExpertName}] {envelope.Reason ?? "step failed"}";
+                    break;
+                }
+            }
+
+            var text = context.TryGetValue("output", out var last) ? last.ToString()! : string.Empty;
+
+            if (failReason is null)
+                return new MissionResult(options.MissionName, text, MissionStatus.Pass, null, attempt);
+
+            lastResult = new MissionResult(options.MissionName, text, MissionStatus.Fail, failReason, attempt);
         }
 
-        var text = context.TryGetValue("output", out var last) ? last.ToString()! : string.Empty;
-        return new MissionResult(options.MissionName, text);
+        return lastResult!;
     }
 
     private static Dictionary<string, object> SeedContext(Program ast, PipelineRunOptions options)
