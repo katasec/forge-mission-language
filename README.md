@@ -273,37 +273,3 @@ These are injected by the runtime and available to every expert. They cannot be 
 | `{{attempt}}` | Current loop iteration, 1-based. |
 | `{{max_loops}}` | Declared loop cap. |
 
----
-
-## Repository structure
-
-```
-mission-control-language/
-  src/
-    ForgeMission.Core/    # parser (ANTLR4), AST, pipeline runner, expert resolution
-    ForgeMission.Cli/     # CLI — mcl init / run / validate / list / expert
-    ForgeMission.Tests/   # unit and integration tests
-  missions/
-    build-operator/       # production K8s operator design example
-    elevator-pitch/       # single-expert pitch example
-    elevator-pitch-refined/  # Generator → Critic → Reviser → Judge example
-  docs/
-    plan.md               # implementation plan — all phases
-    why.md                # origin, methodology, thesis
-    design/               # language design, architecture docs
-    phases/               # per-phase specs
-```
-
----
-
-## Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1–10 | Core runtime, parser, CLI, expert resolution, variables | Done |
-| 12 | Structured step envelope — pass/fail per step | Done |
-| 14 | `loop N` — retry pipeline until all steps pass | Done |
-| 15 | Token streaming — live output as experts generate | Done |
-| 16 | MCL rename — binary and extension surface rename | Done |
-
-See [`docs/plan.md`](docs/plan.md) for the full plan.
