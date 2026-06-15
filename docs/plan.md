@@ -23,6 +23,13 @@
 | [Phase 16 — FML → MCL Rename](phases/phase-16-fms-rename.md) | Full rename: binary (mcl), extension (.mcl), grammar, generated parser classes, docs. | Done |
 | [Phase 17 — Provider Configuration](phases/phase-17-provider-config.md) | Make LLM provider fully configurable via `let` bindings (`provider`, `apiKey`, `model`, `endpoint`). Remove hardcoded OpenAI from CLI. | Done |
 | [Phase 18 — Drop MAF](phases/phase-18-drop-maf.md) | Replace `MafExpertRunner` with `DirectExpertRunner` (direct `IChatClient` calls). Remove `Microsoft.Agents.AI` packages. Primary AOT unblocking step. | Done |
+| Phase 19 — Agent Runtime Design | Design how an `agent` declaration spawns, manages conversational context/continuity, and surfaces missions behind OpenAI-compatible and native interfaces. Covers: agent grammar, runtime lifecycle, session management, interface adapters. | Design |
+
+## Under discussion
+
+| Topic | Description |
+|-------|-------------|
+| Skills and Tools | Review hub/spoke architecture for expert-level tool-calling support (function calls, MCP tools, shell commands). Decide scope, grammar extension, and AOT-safe dispatch before committing to an implementation phase. |
 
 ## Design docs
 

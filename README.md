@@ -1,8 +1,44 @@
 # Mission Control Language (MCL)
 
-A minimal scripting language for staging LLM experts into reliable reasoning pipelines.
+A declarative language for composing AI experts into reliable reasoning pipelines.
 
 > **Why it exists:** see [docs/why.md](docs/why.md)
+
+---
+
+## Core concepts
+
+MCL has three building blocks:
+
+**Expert** — a reusable intelligence package. An expert encapsulates knowledge, methodology, and review criteria for a specific domain. Experts are meant to be portable and distributable.
+
+```fsharp
+expert KubernetesArchitect =
+    from forge.io/kubernetes-architect
+    version "2.1"
+```
+
+**Mission** — a reasoning pattern. A mission describes how experts collaborate: which experts run, in what order, and how their outputs flow forward.
+
+```fsharp
+mission BuildOperatorDesign(goal, persona) =
+    KubernetesArchitect
+    |> SecurityArchitect
+    |> PrincipalReviewer with { style = "terse ADR" }
+```
+
+**Agent** — a runtime endpoint. An agent exposes one or more missions behind a conversational interface (VS Code, Open WebUI, Claude Code, any OpenAI-compatible client). The agent is what a user interacts with; internally it runs missions.
+
+```fsharp
+agent BuildOperator =
+    uses BuildOperatorDesign
+```
+
+```
+Expert  →  reusable intelligence
+Mission →  reasoning pattern
+Agent   →  endpoint / runtime facade
+```
 
 ---
 
