@@ -44,10 +44,10 @@ public class SourceResolverTests : IDisposable
     {
         var uses = new List<UseDeclaration> { new("oci://ghcr.io/forge/experts/platform:v1") };
 
-        var ex = Assert.Throws<FmsException>(() =>
+        var ex = Assert.Throws<MclException>(() =>
             new SourceResolver().Resolve(uses, _dir));
 
-        Assert.Equal(FmsErrorCode.OciNotSupported, ex.Code);
+        Assert.Equal(MclErrorCode.OciNotSupported, ex.Code);
     }
 
     [Fact]
@@ -55,10 +55,10 @@ public class SourceResolverTests : IDisposable
     {
         var uses = new List<UseDeclaration> { new("./nonexistent") };
 
-        var ex = Assert.Throws<FmsException>(() =>
+        var ex = Assert.Throws<MclException>(() =>
             new SourceResolver().Resolve(uses, _dir));
 
-        Assert.Equal(FmsErrorCode.SourceNotFound, ex.Code);
+        Assert.Equal(MclErrorCode.SourceNotFound, ex.Code);
     }
 
     [Fact]

@@ -1,8 +1,8 @@
-# Why Forge Mission Script exists
+# Why Mission Control Language exists
 
 ## Where it came from
 
-FMS emerged from six months of real-world LLM usage across meaningfully different problem
+MCL emerged from six months of real-world LLM usage across meaningfully different problem
 domains: production debugging on custom applications, understanding and debugging complex
 infrastructure defined in IaC, Kubernetes and Helm operations, and software development
 across multiple languages and stacks.
@@ -12,7 +12,7 @@ identify the relevant reasoning lenses, sequence them deliberately, and structur
 between them. That process was always implicit — buried in ad-hoc prompts, markdown files,
 and trial and error.
 
-FMS is the codification of that process. It makes the reasoning structure explicit, named,
+MCL is the codification of that process. It makes the reasoning structure explicit, named,
 composable, and reviewable.
 
 ## Core thesis
@@ -37,11 +37,11 @@ configuration. This works at small scale, but the result is:
 - **not handoff-friendly** — a fresh agent session cannot reconstruct how a problem was being reasoned about
 - **execution-focused** — tool calls, retries, model selection get more attention than the reasoning itself
 
-FMS addresses all of these by making the reasoning structure a first-class artifact.
+MCL addresses all of these by making the reasoning structure a first-class artifact.
 
 ## The broader methodology
 
-FMS does not stand alone. It is one layer in a deliberate engineering approach to LLM-driven work:
+MCL does not stand alone. It is one layer in a deliberate engineering approach to LLM-driven work:
 
 1. **Design first** — never execute cold. Iterate on design until it is solid before any implementation begins.
 2. **Phase decomposition** — break the design into agreed phases. Each phase is a meaningful, bounded unit of work.
@@ -50,10 +50,10 @@ FMS does not stand alone. It is one layer in a deliberate engineering approach t
 5. **Oversight** — an architect agent reviews the work of the executing agent and enforces quality gates.
 6. **Session continuity** — agent performance degrades as context fills. Sessions are treated as bounded units with structured handoffs.
 
-FMS addresses the reasoning structure layer: giving agents a clear, reviewable definition of
+MCL addresses the reasoning structure layer: giving agents a clear, reviewable definition of
 how to approach a problem.
 
-## Thinking models FMS can express
+## Thinking models MCL can express
 
 The same language expresses many common reasoning structures through expert composition.
 

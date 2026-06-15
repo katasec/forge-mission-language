@@ -39,16 +39,16 @@ install: ## Publish single-file binary to ~/.local/bin
 		-p:PublishSingleFile=true \
 		-p:DebugType=none \
 		-o $(INSTALL_DIR)
-	@echo "Installed: $(INSTALL_DIR)/fms"
+	@echo "Installed: $(INSTALL_DIR)/mcl"
 
 demo: install ## Install then run the build-operator sample mission end-to-end
-	cd missions/build-operator && fms init && fms run
+	cd missions/build-operator && mcl init && mcl run
 
 demo-naive: install ## Run the one-shot loop demo — no retry, raw first-attempt output
-	cd missions/loop-demo-naive && fms run
+	cd missions/loop-demo-naive && mcl run
 
 demo-reliable: install ## Run the loop demo — retries until quality passes, shows convergence
-	cd missions/loop-demo && fms run --steps
+	cd missions/loop-demo && mcl run --steps
 
 clean: ## Remove build artefacts (bin/ and obj/)
 	dotnet clean src/

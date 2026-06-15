@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from /Users/ameerdeen/progs/fml/src/ForgeMission.Core/Parser/FmsGrammar.g4 by ANTLR 4.13.1
+// Generated from /Users/ameerdeen/progs/fml/src/ForgeMission.Core/Parser/MclGrammar.g4 by ANTLR 4.13.1
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -33,7 +33,7 @@ using DFA = Antlr4.Runtime.Dfa.DFA;
 
 [System.CodeDom.Compiler.GeneratedCode("ANTLR", "4.13.1")]
 [System.CLSCompliant(false)]
-public partial class FmsGrammarParser : Parser {
+public partial class MclGrammarParser : Parser {
 	protected static DFA[] decisionToDFA;
 	protected static PredictionContextCache sharedContextCache = new PredictionContextCache();
 	public const int
@@ -71,29 +71,29 @@ public partial class FmsGrammarParser : Parser {
 		}
 	}
 
-	public override string GrammarFileName { get { return "FmsGrammar.g4"; } }
+	public override string GrammarFileName { get { return "MclGrammar.g4"; } }
 
 	public override string[] RuleNames { get { return ruleNames; } }
 
 	public override int[] SerializedAtn { get { return _serializedATN; } }
 
-	static FmsGrammarParser() {
+	static MclGrammarParser() {
 		decisionToDFA = new DFA[_ATN.NumberOfDecisions];
 		for (int i = 0; i < _ATN.NumberOfDecisions; i++) {
 			decisionToDFA[i] = new DFA(_ATN.GetDecisionState(i), i);
 		}
 	}
 
-		public FmsGrammarParser(ITokenStream input) : this(input, Console.Out, Console.Error) { }
+		public MclGrammarParser(ITokenStream input) : this(input, Console.Out, Console.Error) { }
 
-		public FmsGrammarParser(ITokenStream input, TextWriter output, TextWriter errorOutput)
+		public MclGrammarParser(ITokenStream input, TextWriter output, TextWriter errorOutput)
 		: base(input, output, errorOutput)
 	{
 		Interpreter = new ParserATNSimulator(this, _ATN, decisionToDFA, sharedContextCache);
 	}
 
 	public partial class ProgramContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Eof() { return GetToken(FmsGrammarParser.Eof, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Eof() { return GetToken(MclGrammarParser.Eof, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public UseDeclContext[] useDecl() {
 			return GetRuleContexts<UseDeclContext>();
 		}
@@ -125,17 +125,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_program; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterProgram(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitProgram(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitProgram(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -214,8 +214,8 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class UseDeclContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode USE() { return GetToken(FmsGrammarParser.USE, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(FmsGrammarParser.STRING, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode USE() { return GetToken(MclGrammarParser.USE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(MclGrammarParser.STRING, 0); }
 		public UseDeclContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -223,17 +223,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_useDecl; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterUseDecl(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitUseDecl(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitUseDecl(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -264,9 +264,9 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class LetBindingContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LET() { return GetToken(FmsGrammarParser.LET, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(FmsGrammarParser.LOWER_ID, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(FmsGrammarParser.EQUALS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LET() { return GetToken(MclGrammarParser.LET, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(MclGrammarParser.LOWER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(MclGrammarParser.EQUALS, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ValueContext value() {
 			return GetRuleContext<ValueContext>(0);
 		}
@@ -277,17 +277,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_letBinding; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterLetBinding(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitLetBinding(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitLetBinding(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -335,17 +335,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_declaration; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterDeclaration(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitDeclaration(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitDeclaration(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -389,12 +389,12 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class OutputDeclContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUTPUT() { return GetToken(FmsGrammarParser.OUTPUT, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(FmsGrammarParser.LPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(FmsGrammarParser.UPPER_ID, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(FmsGrammarParser.RPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA() { return GetToken(FmsGrammarParser.COMMA, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(FmsGrammarParser.STRING, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUTPUT() { return GetToken(MclGrammarParser.OUTPUT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(MclGrammarParser.LPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(MclGrammarParser.UPPER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(MclGrammarParser.RPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA() { return GetToken(MclGrammarParser.COMMA, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(MclGrammarParser.STRING, 0); }
 		public OutputDeclContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -402,17 +402,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_outputDecl; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterOutputDecl(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitOutputDecl(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitOutputDecl(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -460,9 +460,9 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class MissionContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode MISSION() { return GetToken(FmsGrammarParser.MISSION, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(FmsGrammarParser.UPPER_ID, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(FmsGrammarParser.EQUALS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode MISSION() { return GetToken(MclGrammarParser.MISSION, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(MclGrammarParser.UPPER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(MclGrammarParser.EQUALS, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public PipelineContext pipeline() {
 			return GetRuleContext<PipelineContext>(0);
 		}
@@ -479,17 +479,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_mission; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterMission(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitMission(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitMission(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -545,8 +545,8 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class LoopClauseContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOOP() { return GetToken(FmsGrammarParser.LOOP, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode INT() { return GetToken(FmsGrammarParser.INT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOOP() { return GetToken(MclGrammarParser.LOOP, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode INT() { return GetToken(MclGrammarParser.INT, 0); }
 		public LoopClauseContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -554,17 +554,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_loopClause; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterLoopClause(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitLoopClause(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitLoopClause(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -595,9 +595,9 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class ExpertContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EXPERT() { return GetToken(FmsGrammarParser.EXPERT, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(FmsGrammarParser.UPPER_ID, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(FmsGrammarParser.EQUALS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EXPERT() { return GetToken(MclGrammarParser.EXPERT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(MclGrammarParser.UPPER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(MclGrammarParser.EQUALS, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public PipelineContext pipeline() {
 			return GetRuleContext<PipelineContext>(0);
 		}
@@ -611,17 +611,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_expert; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterExpert(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitExpert(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitExpert(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -667,15 +667,15 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class ParamsContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(FmsGrammarParser.LPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] LOWER_ID() { return GetTokens(FmsGrammarParser.LOWER_ID); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(MclGrammarParser.LPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] LOWER_ID() { return GetTokens(MclGrammarParser.LOWER_ID); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID(int i) {
-			return GetToken(FmsGrammarParser.LOWER_ID, i);
+			return GetToken(MclGrammarParser.LOWER_ID, i);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(FmsGrammarParser.RPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(FmsGrammarParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(MclGrammarParser.RPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(MclGrammarParser.COMMA); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
-			return GetToken(FmsGrammarParser.COMMA, i);
+			return GetToken(MclGrammarParser.COMMA, i);
 		}
 		public ParamsContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -684,17 +684,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_params; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterParams(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitParams(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitParams(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -750,9 +750,9 @@ public partial class FmsGrammarParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public StepContext step(int i) {
 			return GetRuleContext<StepContext>(i);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] PIPE() { return GetTokens(FmsGrammarParser.PIPE); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] PIPE() { return GetTokens(MclGrammarParser.PIPE); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode PIPE(int i) {
-			return GetToken(FmsGrammarParser.PIPE, i);
+			return GetToken(MclGrammarParser.PIPE, i);
 		}
 		public PipelineContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -761,17 +761,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_pipeline; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterPipeline(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitPipeline(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitPipeline(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -817,7 +817,7 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class StepContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(FmsGrammarParser.UPPER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode UPPER_ID() { return GetToken(MclGrammarParser.UPPER_ID, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public WithClauseContext withClause() {
 			return GetRuleContext<WithClauseContext>(0);
 		}
@@ -828,17 +828,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_step; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterStep(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitStep(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitStep(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -878,18 +878,18 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class WithClauseContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode WITH() { return GetToken(FmsGrammarParser.WITH, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LBRACE() { return GetToken(FmsGrammarParser.LBRACE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode WITH() { return GetToken(MclGrammarParser.WITH, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LBRACE() { return GetToken(MclGrammarParser.LBRACE, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public BindingContext[] binding() {
 			return GetRuleContexts<BindingContext>();
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public BindingContext binding(int i) {
 			return GetRuleContext<BindingContext>(i);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RBRACE() { return GetToken(FmsGrammarParser.RBRACE, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(FmsGrammarParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RBRACE() { return GetToken(MclGrammarParser.RBRACE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(MclGrammarParser.COMMA); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
-			return GetToken(FmsGrammarParser.COMMA, i);
+			return GetToken(MclGrammarParser.COMMA, i);
 		}
 		public WithClauseContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -898,17 +898,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_withClause; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterWithClause(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitWithClause(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitWithClause(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -960,8 +960,8 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class BindingContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(FmsGrammarParser.LOWER_ID, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(FmsGrammarParser.EQUALS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(MclGrammarParser.LOWER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode EQUALS() { return GetToken(MclGrammarParser.EQUALS, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ValueContext value() {
 			return GetRuleContext<ValueContext>(0);
 		}
@@ -972,17 +972,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_binding; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterBinding(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitBinding(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitBinding(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -1015,8 +1015,8 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class ValueContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(FmsGrammarParser.STRING, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(FmsGrammarParser.LOWER_ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING() { return GetToken(MclGrammarParser.STRING, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LOWER_ID() { return GetToken(MclGrammarParser.LOWER_ID, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public EnvCallContext envCall() {
 			return GetRuleContext<EnvCallContext>(0);
 		}
@@ -1027,17 +1027,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_value; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterValue(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitValue(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitValue(this);
 			else return visitor.VisitChildren(this);
 		}
@@ -1088,14 +1088,14 @@ public partial class FmsGrammarParser : Parser {
 	}
 
 	public partial class EnvCallContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ENV() { return GetToken(FmsGrammarParser.ENV, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(FmsGrammarParser.LPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] STRING() { return GetTokens(FmsGrammarParser.STRING); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ENV() { return GetToken(MclGrammarParser.ENV, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LPAREN() { return GetToken(MclGrammarParser.LPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] STRING() { return GetTokens(MclGrammarParser.STRING); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING(int i) {
-			return GetToken(FmsGrammarParser.STRING, i);
+			return GetToken(MclGrammarParser.STRING, i);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(FmsGrammarParser.RPAREN, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA() { return GetToken(FmsGrammarParser.COMMA, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RPAREN() { return GetToken(MclGrammarParser.RPAREN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA() { return GetToken(MclGrammarParser.COMMA, 0); }
 		public EnvCallContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -1103,17 +1103,17 @@ public partial class FmsGrammarParser : Parser {
 		public override int RuleIndex { get { return RULE_envCall; } }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void EnterRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.EnterEnvCall(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override void ExitRule(IParseTreeListener listener) {
-			IFmsGrammarListener typedListener = listener as IFmsGrammarListener;
+			IMclGrammarListener typedListener = listener as IMclGrammarListener;
 			if (typedListener != null) typedListener.ExitEnvCall(this);
 		}
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
-			IFmsGrammarVisitor<TResult> typedVisitor = visitor as IFmsGrammarVisitor<TResult>;
+			IMclGrammarVisitor<TResult> typedVisitor = visitor as IMclGrammarVisitor<TResult>;
 			if (typedVisitor != null) return typedVisitor.VisitEnvCall(this);
 			else return visitor.VisitChildren(this);
 		}

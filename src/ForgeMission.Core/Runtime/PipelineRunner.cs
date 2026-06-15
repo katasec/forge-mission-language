@@ -17,7 +17,7 @@ public class PipelineRunner(IExpertRunner expertRunner)
             .OfType<MissionDeclaration>()
             .FirstOrDefault(m => m.Name == options.MissionName)
             ?? throw new InvalidOperationException(
-                $"Mission '{options.MissionName}' not found in .fms file");
+                $"Mission '{options.MissionName}' not found in .mcl file");
 
         var maxLoops = mission.MaxLoops;
         var steps    = Flatten(mission.Pipeline, ast);
@@ -44,7 +44,7 @@ public class PipelineRunner(IExpertRunner expertRunner)
                 if (!experts.TryGetValue(step.ExpertName, out var expert))
                     throw new InvalidOperationException(
                         $"Expert '{step.ExpertName}' not found. " +
-                        "Run 'fms validate' to check your mission before running.");
+                        "Run 'mcl validate' to check your mission before running.");
 
                 foreach (var binding in step.With)
                     context[binding.Key] = ResolveBindingValue(binding.Value, context);

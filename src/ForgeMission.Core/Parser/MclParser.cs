@@ -9,10 +9,10 @@ public record ParseResult(Program? Ast, IReadOnlyList<Diagnostic> Diagnostics)
     public bool Success => Ast is not null && Diagnostics.Count == 0;
 }
 
-public static class FmsParser
+public static class MclParser
 {
     /// <summary>
-    /// Parse FMS source and return the AST, throwing <see cref="ParseException"/> on error.
+    /// Parse MCL source and return the AST, throwing <see cref="ParseException"/> on error.
     /// </summary>
     public static Program Parse(string source)
     {
@@ -26,7 +26,7 @@ public static class FmsParser
     }
 
     /// <summary>
-    /// Parse FMS source and return all diagnostics alongside a best-effort AST.
+    /// Parse MCL source and return all diagnostics alongside a best-effort AST.
     /// Use this path for LSP / tooling that needs to handle incomplete input.
     /// </summary>
     public static ParseResult TryParse(string source)
@@ -34,9 +34,9 @@ public static class FmsParser
         var diagnostics = new List<Diagnostic>();
 
         var inputStream  = CharStreams.fromString(source);
-        var lexer        = new FmsGrammarLexer(inputStream);
+        var lexer        = new MclGrammarLexer(inputStream);
         var tokenStream  = new CommonTokenStream(lexer);
-        var parser       = new FmsGrammarParser(tokenStream);
+        var parser       = new MclGrammarParser(tokenStream);
 
         lexer.RemoveErrorListeners();
         parser.RemoveErrorListeners();
@@ -50,7 +50,7 @@ public static class FmsParser
         if (diagnostics.Count > 0)
             return new ParseResult(null, diagnostics);
 
-        var ast = (Program)new FmsAstBuilder().Visit(tree)!;
+        var ast = (Program)new MclAstBuilder().Visit(tree)!;
         return new ParseResult(ast, []);
     }
 }
@@ -73,7 +73,7 @@ file sealed class DiagnosticErrorListener(List<Diagnostic> diagnostics)
         IToken offendingSymbol, int line, int col, string msg,
         Antlr4.Runtime.RecognitionException e)
     {
-        var message = offendingSymbol?.Type == FmsGrammarLexer.LOWER_ID
+        var message = offendingSymbol?.Type == MclGrammarLexer.LOWER_ID
             ? $"'{offendingSymbol.Text}' is not valid here — expert and mission names must be PascalCase"
             : msg;
 

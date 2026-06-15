@@ -8,7 +8,7 @@ MAF (Microsoft Agent Framework) is an internal implementation detail. It does no
 
 ### 1. Parser — `ForgeMission.Core/Parser/`
 
-Pure C#, zero external dependencies. Takes a `.fml` file as a string, produces an AST.
+Pure C#, zero external dependencies. Takes a `.mcl` file as a string, produces an AST.
 
 ```
 Lexer → TokenStream → Parser → AST
@@ -71,11 +71,11 @@ Thin entry point. Parses arguments, wires up dependencies via DI, delegates to C
 
 | Command | Description |
 |---------|-------------|
-| `fms init [mission.fml]` | Resolve expert sources and generate fms.lock |
-| `fms run [mission.fml]` | Run a mission (self-contained — no input file required) |
-| `fms validate [mission.fml]` | Validate all experts exist and pipeline is well-formed |
-| `fms list experts` | List available experts |
-| `fms expert init <Name>` | Scaffold a new expert directory |
+| `mcl init [mission.mcl]` | Resolve expert sources and generate mcl.lock |
+| `mcl run [mission.mcl]` | Run a mission (self-contained — no input file required) |
+| `mcl validate [mission.mcl]` | Validate all experts exist and pipeline is well-formed |
+| `mcl list experts` | List available experts |
+| `mcl expert init <Name>` | Scaffold a new expert directory |
 
 ---
 

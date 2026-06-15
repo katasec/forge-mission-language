@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from /Users/ameerdeen/progs/fml/src/ForgeMission.Core/Parser/FmsGrammar.g4 by ANTLR 4.13.1
+// Generated from /Users/ameerdeen/progs/fml/src/ForgeMission.Core/Parser/MclGrammar.g4 by ANTLR 4.13.1
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -26,7 +26,7 @@ using IToken = Antlr4.Runtime.IToken;
 using ParserRuleContext = Antlr4.Runtime.ParserRuleContext;
 
 /// <summary>
-/// This class provides an empty implementation of <see cref="IFmsGrammarVisitor{Result}"/>,
+/// This class provides an empty implementation of <see cref="IMclGrammarVisitor{Result}"/>,
 /// which can be extended to create a visitor which only needs to handle a subset
 /// of the available methods.
 /// </summary>
@@ -34,9 +34,9 @@ using ParserRuleContext = Antlr4.Runtime.ParserRuleContext;
 [System.CodeDom.Compiler.GeneratedCode("ANTLR", "4.13.1")]
 [System.Diagnostics.DebuggerNonUserCode]
 [System.CLSCompliant(false)]
-public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Result>, IFmsGrammarVisitor<Result> {
+public partial class MclGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Result>, IMclGrammarVisitor<Result> {
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.program"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.program"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -44,9 +44,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitProgram([NotNull] FmsGrammarParser.ProgramContext context) { return VisitChildren(context); }
+	public virtual Result VisitProgram([NotNull] MclGrammarParser.ProgramContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.useDecl"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.useDecl"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -54,9 +54,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitUseDecl([NotNull] FmsGrammarParser.UseDeclContext context) { return VisitChildren(context); }
+	public virtual Result VisitUseDecl([NotNull] MclGrammarParser.UseDeclContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.letBinding"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.letBinding"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -64,9 +64,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitLetBinding([NotNull] FmsGrammarParser.LetBindingContext context) { return VisitChildren(context); }
+	public virtual Result VisitLetBinding([NotNull] MclGrammarParser.LetBindingContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.declaration"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.declaration"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -74,9 +74,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitDeclaration([NotNull] FmsGrammarParser.DeclarationContext context) { return VisitChildren(context); }
+	public virtual Result VisitDeclaration([NotNull] MclGrammarParser.DeclarationContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.outputDecl"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.outputDecl"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -84,9 +84,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitOutputDecl([NotNull] FmsGrammarParser.OutputDeclContext context) { return VisitChildren(context); }
+	public virtual Result VisitOutputDecl([NotNull] MclGrammarParser.OutputDeclContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.mission"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.mission"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -94,9 +94,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitMission([NotNull] FmsGrammarParser.MissionContext context) { return VisitChildren(context); }
+	public virtual Result VisitMission([NotNull] MclGrammarParser.MissionContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.loopClause"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.loopClause"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -104,9 +104,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitLoopClause([NotNull] FmsGrammarParser.LoopClauseContext context) { return VisitChildren(context); }
+	public virtual Result VisitLoopClause([NotNull] MclGrammarParser.LoopClauseContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.expert"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.expert"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -114,9 +114,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitExpert([NotNull] FmsGrammarParser.ExpertContext context) { return VisitChildren(context); }
+	public virtual Result VisitExpert([NotNull] MclGrammarParser.ExpertContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.params"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.params"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -124,9 +124,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitParams([NotNull] FmsGrammarParser.ParamsContext context) { return VisitChildren(context); }
+	public virtual Result VisitParams([NotNull] MclGrammarParser.ParamsContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.pipeline"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.pipeline"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -134,9 +134,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitPipeline([NotNull] FmsGrammarParser.PipelineContext context) { return VisitChildren(context); }
+	public virtual Result VisitPipeline([NotNull] MclGrammarParser.PipelineContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.step"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.step"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -144,9 +144,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitStep([NotNull] FmsGrammarParser.StepContext context) { return VisitChildren(context); }
+	public virtual Result VisitStep([NotNull] MclGrammarParser.StepContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.withClause"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.withClause"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -154,9 +154,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitWithClause([NotNull] FmsGrammarParser.WithClauseContext context) { return VisitChildren(context); }
+	public virtual Result VisitWithClause([NotNull] MclGrammarParser.WithClauseContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.binding"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.binding"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -164,9 +164,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitBinding([NotNull] FmsGrammarParser.BindingContext context) { return VisitChildren(context); }
+	public virtual Result VisitBinding([NotNull] MclGrammarParser.BindingContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.value"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.value"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -174,9 +174,9 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitValue([NotNull] FmsGrammarParser.ValueContext context) { return VisitChildren(context); }
+	public virtual Result VisitValue([NotNull] MclGrammarParser.ValueContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="FmsGrammarParser.envCall"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.envCall"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -184,6 +184,6 @@ public partial class FmsGrammarBaseVisitor<Result> : AbstractParseTreeVisitor<Re
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitEnvCall([NotNull] FmsGrammarParser.EnvCallContext context) { return VisitChildren(context); }
+	public virtual Result VisitEnvCall([NotNull] MclGrammarParser.EnvCallContext context) { return VisitChildren(context); }
 }
 } // namespace ForgeMission.Core.Parser

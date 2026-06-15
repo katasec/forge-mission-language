@@ -17,8 +17,8 @@ public class SourceResolver
         foreach (var use in uses)
         {
             if (use.Source.StartsWith("oci://", StringComparison.OrdinalIgnoreCase))
-                throw new FmsException(
-                    FmsErrorCode.OciNotSupported,
+                throw new MclException(
+                    MclErrorCode.OciNotSupported,
                     $"OCI sources are not yet supported: '{use.Source}'",
                     "Remove the OCI use declaration or wait for Phase 11.");
 
@@ -27,8 +27,8 @@ public class SourceResolver
                 : Path.GetFullPath(Path.Combine(missionDirectory, use.Source));
 
             if (!Directory.Exists(sourcePath))
-                throw new FmsException(
-                    FmsErrorCode.SourceNotFound,
+                throw new MclException(
+                    MclErrorCode.SourceNotFound,
                     $"Source not found: '{use.Source}'",
                     $"Resolved to: {sourcePath}");
 

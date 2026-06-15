@@ -7,9 +7,9 @@ using ForgeMission.Core.Runtime;
 using static ForgeMission.Core.Runtime.MissionStatus;
 using Microsoft.Extensions.AI;
 using OpenAI;
-using FmsProgram = ForgeMission.Core.Parser.Program;
+using MclProgram = ForgeMission.Core.Parser.Program;
 
-var rootCommand = new RootCommand("fms — Forge Mission Script runtime");
+var rootCommand = new RootCommand("mcl — Mission Control Language runtime");
 rootCommand.Add(BuildInitCommand());
 rootCommand.Add(BuildRunCommand());
 rootCommand.Add(BuildValidateCommand());
@@ -23,9 +23,9 @@ return await rootCommand.Parse(args).InvokeAsync();
 
 static Command BuildInitCommand()
 {
-    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fms)", Arity = ArgumentArity.ZeroOrOne };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
 
-    var cmd = new Command("init", "Resolve expert sources and generate fms.lock");
+    var cmd = new Command("init", "Resolve expert sources and generate mcl.lock");
     cmd.Add(missionArg);
 
     cmd.SetAction(async result =>
@@ -53,7 +53,7 @@ static Command BuildInitCommand()
         {
             catalog = new SourceResolver().Resolve(ast.Uses, missionDir);
         }
-        catch (FmsException ex)
+        catch (MclException ex)
         {
             Die(ex.Message);
             return;
@@ -67,7 +67,7 @@ static Command BuildInitCommand()
             Console.WriteLine($"  {name,-30} {expert.Source}");
 
         var lockFile = LockFileIO.Build(ast.Uses.Select(u => u.Source).ToList(), catalog);
-        var lockPath = Path.Combine(missionDir, "fms.lock");
+        var lockPath = Path.Combine(missionDir, "mcl.lock");
         LockFileIO.Write(lockPath, lockFile);
 
         Console.WriteLine($"\nGenerated {lockPath}");
@@ -83,7 +83,7 @@ static Command BuildInitCommand()
 
 static Command BuildRunCommand()
 {
-    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fms)", Arity = ArgumentArity.ZeroOrOne };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
     var stepsOpt   = new Option<bool>("--steps") { Description = "Stream each expert's output to stderr as the pipeline runs" };
     var varOpt     = new Option<string[]>("--var")
     {
@@ -104,10 +104,10 @@ static Command BuildRunCommand()
         var vars       = result.GetValue(varOpt) ?? [];
         var missionDir = mission.DirectoryName!;
 
-        var lockPath = Path.Combine(missionDir, "fms.lock");
+        var lockPath = Path.Combine(missionDir, "mcl.lock");
         if (!File.Exists(lockPath))
         {
-            Die("FMS007 Mission not initialised — run 'fms init' first.");
+            Die("MCL007 Mission not initialised — run 'mcl init' first.");
             return;
         }
 
@@ -122,7 +122,7 @@ static Command BuildRunCommand()
 
         LockFile lockFile;
         try { lockFile = LockFileIO.Read(lockPath); }
-        catch (Exception ex) { Die($"Cannot read fms.lock: {ex.Message}"); return; }
+        catch (Exception ex) { Die($"Cannot read mcl.lock: {ex.Message}"); return; }
 
         Dictionary<string, ExpertDefinition> expertDefs;
         try { expertDefs = ExpertLoader.LoadFromLockFile(lockFile); }
@@ -172,7 +172,7 @@ static Command BuildRunCommand()
 
 static Command BuildValidateCommand()
 {
-    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .fms mission file (default: mission.fms)", Arity = ArgumentArity.ZeroOrOne };
+    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
 
     var cmd = new Command("validate", "Validate a mission file and its expert references");
     cmd.Add(missionArg);
@@ -181,7 +181,7 @@ static Command BuildValidateCommand()
     {
         var mission    = ResolveMission(result.GetValue(missionArg));
         var missionDir = mission.DirectoryName!;
-        var lockPath   = Path.Combine(missionDir, "fms.lock");
+        var lockPath   = Path.Combine(missionDir, "mcl.lock");
 
         var source = await TryReadFile(mission.FullName);
         if (source is null) return;
@@ -192,7 +192,7 @@ static Command BuildValidateCommand()
         // Warn if lock file is absent or stale
         if (!File.Exists(lockPath))
         {
-            Console.Error.WriteLine("warning: FMS006 fms.lock not found — run 'fms init' to generate it");
+            Console.Error.WriteLine("warning: MCL006 mcl.lock not found — run 'mcl init' to generate it");
         }
         else
         {
@@ -201,7 +201,7 @@ static Command BuildValidateCommand()
             var currentSources = ast.Uses.Select(u => u.Source).ToHashSet(StringComparer.Ordinal);
             var lockedSources  = lockFile.Sources.ToHashSet(StringComparer.Ordinal);
             if (!currentSources.SetEquals(lockedSources))
-                Console.Error.WriteLine("warning: FMS006 fms.lock is stale — run 'fms init' to update it");
+                Console.Error.WriteLine("warning: MCL006 mcl.lock is stale — run 'mcl init' to update it");
         }
 
         if (!File.Exists(lockPath))
@@ -309,9 +309,9 @@ static async Task<string?> TryReadFile(string path)
     catch (Exception ex) { Die($"Cannot read file '{path}': {ex.Message}"); return null; }
 }
 
-static FmsProgram? TryParse(string source)
+static MclProgram? TryParse(string source)
 {
-    try { return FmsParser.Parse(source); }
+    try { return MclParser.Parse(source); }
     catch (ParseException ex) { Die(ex.Message); return null; }
 }
 
@@ -322,7 +322,7 @@ static Dictionary<string, ExpertDefinition>? TryLoadExperts(string expertsDir)
     catch (ExpertLoadException ex) { Die(ex.Message); return null; }
 }
 
-static bool TryValidate(FmsProgram ast, Dictionary<string, ExpertDefinition> experts)
+static bool TryValidate(MclProgram ast, Dictionary<string, ExpertDefinition> experts)
 {
     try { ExpertLoader.Validate(ast, experts); return true; }
     catch (ExpertLoadException ex) { Die(ex.Message); return false; }
@@ -368,7 +368,7 @@ static string ExpertTemplate(string name) => $"""
     """;
 
 static FileInfo ResolveMission(FileInfo? arg)
-    => new FileInfo(Path.GetFullPath(arg?.FullName ?? "mission.fms"));
+    => new FileInfo(Path.GetFullPath(arg?.FullName ?? "mission.mcl"));
 
 static void Die(string message)
 {

@@ -1,4 +1,4 @@
-# Forge Mission Script (FMS)
+# Mission Control Language (MCL)
 
 A minimal scripting language for composing LLM experts into reliable reasoning pipelines.
 
@@ -11,8 +11,8 @@ A minimal scripting language for composing LLM experts into reliable reasoning p
 ```bash
 export OPENAI_API_KEY=sk-...
 
-fms init       # resolve experts, generate fms.lock
-fms run        # run the mission, output to stdout
+mcl init       # resolve experts, generate mcl.lock
+mcl run        # run the mission, output to stdout
 ```
 
 ---
@@ -45,29 +45,29 @@ reasoning with accumulating context.
 ## CLI
 
 ```bash
-# Resolve expert sources and write fms.lock
-fms init
+# Resolve expert sources and write mcl.lock
+mcl init
 
 # Check all experts resolve, pipeline is well-formed, lock file is current
-fms validate
+mcl validate
 
 # Run the mission — output to stdout
-fms run
+mcl run
 
 # Stream each expert's progress to stderr as the pipeline runs
-fms run --steps
+mcl run --steps
 
 # Override any let binding at run time
-fms run --var goal="Redesign for ARM64"
+mcl run --var goal="Redesign for ARM64"
 
 # Scaffold a new expert directory
-fms expert init SecurityArchitect
+mcl expert init SecurityArchitect
 
 # List experts in the current directory
-fms list experts
+mcl list experts
 ```
 
-`fms run` requires an `fms.lock` — init is not optional. This mirrors Terraform's
+`mcl run` requires an `mcl.lock` — init is not optional. This mirrors Terraform's
 `plan` / `apply` discipline: resolve first, then run.
 
 ---
@@ -77,9 +77,9 @@ fms list experts
 By default the mission result goes to stdout — pipeable like any CLI tool:
 
 ```bash
-fms run                          # stdout
-fms run > report.md              # redirect
-fms run | pbcopy                 # pipe
+mcl run                          # stdout
+mcl run > report.md              # redirect
+mcl run | pbcopy                 # pipe
 ```
 
 Declare the destination in the mission file to make it explicit:
@@ -119,8 +119,8 @@ Experts live in a directory declared by `use`:
 
 ```
 missions/build-operator/
-  mission.fms
-  fms.lock
+  mission.mcl
+  mcl.lock
   experts/
     KubernetesArchitect/
       expert.md
@@ -272,7 +272,7 @@ These are injected by the runtime and available to every expert. They cannot be 
 forge-mission-language/
   src/
     ForgeMission.Core/    # parser (ANTLR4), AST, pipeline runner, expert resolution
-    ForgeMission.Cli/     # CLI — fms init / run / validate / list / expert
+    ForgeMission.Cli/     # CLI — mcl init / run / validate / list / expert
     ForgeMission.Tests/   # unit and integration tests
   missions/
     build-operator/       # production K8s operator design example
@@ -295,6 +295,6 @@ forge-mission-language/
 | 12 | Structured step envelope — pass/fail per step | Done |
 | 14 | `loop N` — retry pipeline until all steps pass | Done |
 | 15 | Token streaming — live output as experts generate | Done |
-| 16 | FMS rename — binary and extension surface rename | Done |
+| 16 | MCL rename — binary and extension surface rename | Done |
 
 See [`docs/plan.md`](docs/plan.md) for the full plan.

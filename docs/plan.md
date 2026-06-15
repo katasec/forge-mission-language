@@ -13,14 +13,14 @@
 | [Phase 7 — Validation](phases/phase-7-validation.md) | Build build-operator example, test hypothesis, document findings | Done |
 | [Phase 8 — ANTLR Migration](phases/phase-8-antlr-migration.md) | Replace hand-rolled parser with ANTLR4-generated parser, existing tests as regression gate | Done |
 | [Phase 9 — Variables](phases/phase-9-variables.md) | `let` bindings, mission parameters, per-step `with` clauses, context bag runtime | Done |
-| [Phase 10 — Expert Resolution](phases/phase-10-expert-resolution.md) | `use` declarations, directory-per-expert, `fms init`, lock file, error codes | Done |
+| [Phase 10 — Expert Resolution](phases/phase-10-expert-resolution.md) | `use` declarations, directory-per-expert, `mcl init`, lock file, error codes | Done |
 | [Phase 11 — OCI Source Support](phases/phase-11-oci-sources.md) | `use "oci://..."` runtime resolution, pull from OCI registry | Blocked |
 | [Phase 12 — StepEnvelope](phases/phase-12-step-envelope.md) | Structured JSON envelope flowing through pipeline; fail-fast on any step failure; `MissionResult` carries status | Done |
 | ~~Phase 13 — passes when~~ | Dropped — failure is declared in the expert MD, not the mission grammar. Bash exit-code model: all steps pass by default; any step returning `fail` stops the mission. | Dropped |
 | [Phase 14 — loop N](phases/phase-14-loop.md) | `loop N` on the mission declaration; reserved variables `{{attempt}}` and `{{max_loops}}` injected by runtime | Done |
 | [Phase 14.5 — Loop Demo](phases/phase-14.5-loop-demo.md) | `ContextOverloaded` (drunk expert, always self-passes) + `QualityJudge` demo showing loop converging on quality | Done |
 | [Phase 15 — Token Streaming](phases/phase-15-streaming.md) | `IAsyncEnumerable<string>` from runner; chunks forwarded to `StepWriter` live; no more silent wait per expert | Done |
-| [Phase 16 — FML → FMS Rename](phases/phase-16-fms-rename.md) | Full rename: binary, extension, grammar, generated parser classes, `FmsParser`, `FmsAstBuilder`, docs. | Done |
+| [Phase 16 — FML → MCL Rename](phases/phase-16-fms-rename.md) | Full rename: binary (mcl), extension (.mcl), grammar, generated parser classes, docs. | Done |
 
 ## Design docs
 
@@ -29,5 +29,5 @@
 | [Language Design](design/language.md) | Grammar, syntax decisions, primitives, capitalisation rationale |
 | [Architecture](design/architecture.md) | Components, boundaries, dependency flow |
 | [MAF Research](design/maf.md) | Microsoft Agent Framework 1.0 spike findings |
-| [Methodology](design/methodology.md) | The broader engineering approach FMS fits into |
-| [Why FMS exists](why.md) | Origin, core thesis, methodology, thinking models |
+| [Methodology](design/methodology.md) | The broader engineering approach MCL fits into |
+| [Why MCL exists](why.md) | Origin, core thesis, methodology, thinking models |

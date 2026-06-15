@@ -16,7 +16,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task SingleStep_CallsRunnerOnce_ReturnsOutput()
     {
-        var ast    = FmsParser.Parse("mission BuildOperator = KubernetesArchitect");
+        var ast    = MclParser.Parse("mission BuildOperator = KubernetesArchitect");
         var stub   = new StubExpertRunner();
         var result = await new PipelineRunner(stub)
             .RunAsync(ast, Experts("KubernetesArchitect"), new PipelineRunOptions("BuildOperator"));
@@ -29,7 +29,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task MultiStep_PassesOutputForward()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> SecurityArchitect
@@ -55,7 +55,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Result_ContainsLastStepOutput()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> PrincipalReviewer
@@ -72,7 +72,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task StepWriter_ReceivesEachStepOutput()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> SecurityArchitect
@@ -94,7 +94,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task CancellationToken_IsRespected()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> SecurityArchitect
@@ -113,7 +113,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task LetBindings_SeedContext()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             let goal = "Design a K8s operator"
             mission BuildOperator = KubernetesArchitect
             """);
@@ -128,7 +128,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task WithClause_OverridesContextForStep()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect with { style = "terse" }
             """);
@@ -143,7 +143,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task VarFlag_OverridesLetBinding()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             let goal = "original"
             mission BuildOperator = KubernetesArchitect
             """);
@@ -160,7 +160,7 @@ public class PipelineRunnerTests
     [Fact]
     public void MissingEnvVar_ThrowsClearly()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             let apiKey = env("FMLTEST_MISSING_VAR_XYZ")
             mission BuildOperator = KubernetesArchitect
             """);
@@ -179,7 +179,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task StepFail_StopsImmediately_SecondStepNeverCalled()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> SecurityArchitect
@@ -203,7 +203,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task StepPass_PipelineContinues()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission BuildOperator =
                 KubernetesArchitect
                 |> SecurityArchitect
@@ -223,7 +223,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Loop_RetriesUntilAllStepsPass()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission RefinedPitch =
                 Drafter
                 |> Judge
@@ -250,7 +250,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Loop_ExhaustedFails_SurfacesLastFailReason()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission RefinedPitch =
                 Drafter
                 |> Judge
@@ -274,7 +274,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task AttemptVariable_InjectedEachAttempt()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission Demo =
                 Worker
                 loop 3
@@ -296,7 +296,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task MaxLoopsVariable_InjectedEachAttempt()
     {
-        var ast = FmsParser.Parse("""
+        var ast = MclParser.Parse("""
             mission Demo =
                 Worker
                 loop 5
@@ -318,7 +318,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task NoLoop_AttemptAndMaxLoopsDefaultToOne()
     {
-        var ast  = FmsParser.Parse("mission Demo = Worker");
+        var ast  = MclParser.Parse("mission Demo = Worker");
         var stub = new StubExpertRunner();
 
         var result = await new PipelineRunner(stub)
@@ -332,7 +332,7 @@ public class PipelineRunnerTests
     [Fact]
     public void LoopN_ParsedIntoMissionDeclaration()
     {
-        var ast     = FmsParser.Parse("mission Demo = Worker loop 4");
+        var ast     = MclParser.Parse("mission Demo = Worker loop 4");
         var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
         Assert.Equal(4, mission.MaxLoops);
     }
@@ -340,7 +340,7 @@ public class PipelineRunnerTests
     [Fact]
     public void NoLoop_MaxLoopsDefaultsToOne()
     {
-        var ast     = FmsParser.Parse("mission Demo = Worker");
+        var ast     = MclParser.Parse("mission Demo = Worker");
         var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
         Assert.Equal(1, mission.MaxLoops);
     }

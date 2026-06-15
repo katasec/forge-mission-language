@@ -1,6 +1,6 @@
 namespace ForgeMission.Core.Resolution;
 
-public enum FmsErrorCode
+public enum MclErrorCode
 {
     UnknownExpert          = 1,
     DuplicateExpert        = 2,
@@ -12,9 +12,9 @@ public enum FmsErrorCode
     OciNotSupported        = 10,
 }
 
-public class FmsException(FmsErrorCode code, string message, string? detail = null)
-    : Exception($"FMS{(int)code:D3} {message}{(detail is null ? "" : $"\n\n{detail}")}")
+public class MclException(MclErrorCode code, string message, string? detail = null)
+    : Exception($"MCL{(int)code:D3} {message}{(detail is null ? "" : $"\n\n{detail}")}")
 {
-    public FmsErrorCode Code    { get; } = code;
+    public MclErrorCode Code    { get; } = code;
     public string?      Detail  { get; } = detail;
 }

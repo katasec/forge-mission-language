@@ -13,7 +13,7 @@ The mental model is deliberately Terraform / npm:
 |------|------|-----------|-------|-----|
 | Terraform | `terraform init` | `.terraform.lock.hcl` | `.terraform/` | `terraform apply` |
 | npm | `npm install` | `package-lock.json` | `node_modules/` + `~/.npm` | `npm start` |
-| **FMS** | `fms init` | `fms.lock` | `.fms/` + `~/.fms/cache` | `fms run` |
+| **FMS** | `fms init` | `mcl.lock` | `.fms/` + `~/.fms/cache` | `fms run` |
 
 ---
 
@@ -114,7 +114,7 @@ the same model as npm's local package override.
 ## `fms init`
 
 Parses `use` declarations, resolves and downloads remote sources (Phase 10: local only),
-populates `.fms/`, generates `fms.lock`.
+populates `.fms/`, generates `mcl.lock`.
 
 ```pwsh
 fms init
@@ -131,7 +131,7 @@ Resolved:
   SecurityArchitect    ./experts
   PrincipalReviewer    ./experts
 
-Generated fms.lock
+Generated mcl.lock
 ```
 
 For Phase 10, only local path sources are supported. OCI URI sources are parsed and stored in
@@ -139,7 +139,7 @@ the grammar but emit a `FMS010 OCI sources are not yet supported` error during i
 
 ---
 
-## Lock file — `fms.lock`
+## Lock file — `mcl.lock`
 
 Project-local, committed to git. Provides reproducible execution — the exact source and (future)
 digest for every expert used by the mission.
@@ -200,22 +200,22 @@ Phase 10: cache directory is created but nothing is written to it (local sources
 ```text
 .fms/
   experts/           # symlinks or copies of resolved expert directories
-  fms.lock           # copy of the committed lock file (authoritative copy is repo root)
+  mcl.lock           # copy of the committed lock file (authoritative copy is repo root)
 ```
 
-`.fms/` is gitignored. `fms init` always regenerates it from `fms.lock`.
+`.fms/` is gitignored. `fms init` always regenerates it from `mcl.lock`.
 
 ---
 
 ## `fms run` — requires init
 
-If `fms.lock` does not exist or `.fms/` is absent:
+If `mcl.lock` does not exist or `.fms/` is absent:
 
 ```text
 error: mission has not been initialised. Run 'fms init' first.
 ```
 
-`fms run` reads the resolved expert paths from `fms.lock` rather than scanning the experts
+`fms run` reads the resolved expert paths from `mcl.lock` rather than scanning the experts
 directory directly. This makes the lock file the single source of truth at execution time.
 
 ---
@@ -230,7 +230,7 @@ Checks (in order):
 1. All `use` sources are reachable
 2. All expert names referenced in the mission resolve to exactly one source (no ambiguity)
 3. No circular expert composition
-4. `fms.lock` is consistent with the current `use` declarations (warn if stale)
+4. `mcl.lock` is consistent with the current `use` declarations (warn if stale)
 5. Expert frontmatter is valid (name, input, output present)
 
 ---
@@ -281,7 +281,7 @@ Produce [output description].
 | `FMS003` | Circular expert reference: `'{name}'` |
 | `FMS004` | Missing required frontmatter field `'{field}'` in `{path}` |
 | `FMS005` | Source not found: `'{source}'` |
-| `FMS006` | `fms.lock` is stale — run `fms init` to update |
+| `FMS006` | `mcl.lock` is stale — run `fms init` to update |
 | `FMS007` | Mission not initialised — run `fms init` first |
 | `FMS010` | OCI sources are not yet supported |
 
@@ -310,11 +310,11 @@ Suggested action:
 | 2 | Add `UseDeclaration` to AST; update `FmlAstBuilder` | Done |
 | 3 | Update `ExpertLoader` — look for `<name>/expert.md` instead of `<name>.md` | Done |
 | 4 | Migrate `missions/build-operator/experts/` to directory-per-expert structure | Done |
-| 5 | Implement `LockFileWriter` — generate `fms.lock` from resolved expert map | Done |
-| 6 | Implement `LockFileReader` — load resolved expert paths from `fms.lock` | Done |
+| 5 | Implement `LockFileWriter` — generate `mcl.lock` from resolved expert map | Done |
+| 6 | Implement `LockFileReader` — load resolved expert paths from `mcl.lock` | Done |
 | 7 | Implement `SourceResolver` — resolve local path sources; emit FMS010 for OCI | Done |
 | 8 | Add `fms init` command — parse `use` decls, resolve sources, write lock file | Done |
-| 9 | Update `fms run` — read from `fms.lock`; fail with FMS007 if not initialised | Done |
+| 9 | Update `fms run` — read from `mcl.lock`; fail with FMS007 if not initialised | Done |
 | 10 | Update `fms validate` — stale lock file detection (FMS006), duplicate check (FMS002) | Done |
 | 11 | Add `fms expert init <Name>` command — scaffold directory-per-expert | Done |
 | 12 | Add `FMS` error code infrastructure — structured diagnostics with code, message, context | Done |
@@ -340,7 +340,7 @@ Suggested action:
 
 - The flat `experts/KubernetesArchitect.md` convention (Phases 1–9) is a breaking change. The
   migration is mechanical: `mkdir experts/KubernetesArchitect && mv experts/KubernetesArchitect.md experts/KubernetesArchitect/expert.md`. The loader change handles both old and new structure during a transition period if needed, but the examples should be migrated immediately.
-- `fms.lock` lives at the project root alongside `mission.fms`. It is committed to git.
+- `mcl.lock` lives at the project root alongside `mission.fms`. It is committed to git.
 - `.fms/` is gitignored. Add to `.gitignore` as part of this phase.
 - The `use` keyword must be added before LOWER_ID in the lexer rule order so it takes lexer
   priority, consistent with how `let`, `with`, `env` are handled.
@@ -349,7 +349,7 @@ Suggested action:
 
 45 tests pass (43 unit + 2 integration-skip). All three new commands work end-to-end:
 
-- `fms init` resolves `use` declarations, writes `fms.lock`
+- `fms init` resolves `use` declarations, writes `mcl.lock`
 - `fms validate` reads from lock file, warns on stale lock
 - `fms expert init <Name>` scaffolds directory-per-expert with frontmatter template
-- `fms run` fails clearly with FMS007 if `fms.lock` is absent
+- `fms run` fails clearly with FMS007 if `mcl.lock` is absent
