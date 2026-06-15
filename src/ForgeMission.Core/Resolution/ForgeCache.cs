@@ -14,6 +14,8 @@ public static class ForgeCache
     /// Returns the absolute path where an OCI expert's expert.md should be cached.
     /// Layout: ~/.forge/experts/{registry}/{name}/{version}/expert.md
     /// </summary>
+    public static string ExpertsRoot => Path.Combine(Root, "experts");
+
     public static string ExpertMdPath(string registry, string ociName, string version)
         => Path.Combine(Root, "experts", registry, ociName, version, "expert.md");
 }

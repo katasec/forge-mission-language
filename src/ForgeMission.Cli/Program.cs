@@ -18,6 +18,7 @@ rootCommand.Add(BuildValidateCommand());
 rootCommand.Add(BuildListCommand());
 rootCommand.Add(BuildExpertCommand());
 rootCommand.Add(BuildLoginCommand());
+rootCommand.Add(BuildCleanCommand());
 
 return await rootCommand.Parse(args).InvokeAsync();
 
@@ -401,6 +402,40 @@ static Command BuildLoginCommand()
         Console.WriteLine($"Credentials saved for {registry}");
 
         await Task.CompletedTask;
+    });
+
+    return cmd;
+}
+
+// ---------------------------------------------------------------------------
+// forge clean
+
+static Command BuildCleanCommand()
+{
+    var registryOpt = new Option<string?>("--registry") { Description = "Limit to a specific registry host (e.g. ghcr.io)" };
+
+    var cmd = new Command("clean", "Remove cached OCI experts from ~/.forge/experts");
+    cmd.Add(registryOpt);
+
+    cmd.SetAction(result =>
+    {
+        var registry = result.GetValue(registryOpt);
+        var target   = registry is not null
+            ? Path.Combine(ForgeCache.ExpertsRoot, registry)
+            : ForgeCache.ExpertsRoot;
+
+        if (!Directory.Exists(target))
+        {
+            Console.WriteLine($"Nothing to clean ({target} does not exist).");
+            return;
+        }
+
+        var dirs = Directory.GetDirectories(target, "*", SearchOption.AllDirectories);
+        var files = Directory.GetFiles(target, "*", SearchOption.AllDirectories);
+        Directory.Delete(target, recursive: true);
+
+        Console.WriteLine($"Removed {files.Length} cached expert file(s) from {target}");
+        return;
     });
 
     return cmd;
