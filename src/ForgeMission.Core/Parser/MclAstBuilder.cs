@@ -4,9 +4,13 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
 {
     public override object? VisitProgram(MclGrammarParser.ProgramContext ctx)
     {
-        var uses = ctx.useDecl()
-            .Select(u => (UseDeclaration)Visit(u)!)
-            .ToList();
+        if (ctx.useDecl().Length > 0)
+        {
+            var first = ctx.useDecl()[0];
+            throw new ParseException(
+                "'use' declarations are no longer needed — experts are loaded from ./experts automatically. Remove the 'use' line.",
+                first.Start.Line, first.Start.Column);
+        }
 
         var bindings = ctx.letBinding()
             .Select(b => (LetBinding)Visit(b)!)
@@ -20,11 +24,8 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
             .Select(o => (OutputDeclaration)Visit(o)!)
             .ToList();
 
-        return new Program(uses, bindings, declarations, outputs);
+        return new Program(bindings, declarations, outputs);
     }
-
-    public override object? VisitUseDecl(MclGrammarParser.UseDeclContext ctx)
-        => new UseDeclaration(StripQuotes(ctx.STRING().GetText()));
 
     public override object? VisitLetBinding(MclGrammarParser.LetBindingContext ctx)
     {

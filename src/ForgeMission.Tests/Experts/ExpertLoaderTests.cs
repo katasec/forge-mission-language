@@ -187,10 +187,9 @@ public class ExpertLoaderTests : IDisposable
 
         var lockFile = new LockFile
         {
-            Sources = ["./experts"],
             Experts = new Dictionary<string, LockFileExpert>
             {
-                ["KubernetesArchitect"] = new() { Source = "./experts", Path = relativePath }
+                ["KubernetesArchitect"] = new() { Source = "experts", Path = relativePath }
             }
         };
 

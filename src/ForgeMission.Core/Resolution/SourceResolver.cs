@@ -1,47 +1,31 @@
-using ForgeMission.Core.Parser;
-
 namespace ForgeMission.Core.Resolution;
 
 /// <summary>
-/// Resolves expert names from declared sources.
-/// Local paths are fully supported. OCI URIs are parsed but blocked (FMS010).
+/// Discovers experts from the conventional ./experts directory.
 /// </summary>
 public class SourceResolver
 {
-    public Dictionary<string, ResolvedExpert> Resolve(
-        IReadOnlyList<UseDeclaration> uses,
-        string missionDirectory)
+    public const string DefaultExpertsDir = "experts";
+
+    public Dictionary<string, ResolvedExpert> Resolve(string missionDirectory)
     {
+        var sourcePath = Path.GetFullPath(Path.Combine(missionDirectory, DefaultExpertsDir));
+
+        if (!Directory.Exists(sourcePath))
+            throw new MclException(
+                MclErrorCode.SourceNotFound,
+                $"Experts directory not found: '{DefaultExpertsDir}'",
+                $"Resolved to: {sourcePath}. Create the directory and add expert subdirectories.");
+
         var catalog = new Dictionary<string, ResolvedExpert>(StringComparer.Ordinal);
 
-        foreach (var use in uses)
+        foreach (var expertDir in Directory.GetDirectories(sourcePath))
         {
-            if (use.Source.StartsWith("oci://", StringComparison.OrdinalIgnoreCase))
-                throw new MclException(
-                    MclErrorCode.OciNotSupported,
-                    $"OCI sources are not yet supported: '{use.Source}'",
-                    "Remove the OCI use declaration or wait for Phase 11.");
+            var expertMd = Path.Combine(expertDir, "expert.md");
+            if (!File.Exists(expertMd)) continue;
 
-            var sourcePath = Path.IsPathRooted(use.Source)
-                ? use.Source
-                : Path.GetFullPath(Path.Combine(missionDirectory, use.Source));
-
-            if (!Directory.Exists(sourcePath))
-                throw new MclException(
-                    MclErrorCode.SourceNotFound,
-                    $"Source not found: '{use.Source}'",
-                    $"Resolved to: {sourcePath}");
-
-            foreach (var expertDir in Directory.GetDirectories(sourcePath))
-            {
-                var expertMd = Path.Combine(expertDir, "expert.md");
-                if (!File.Exists(expertMd)) continue;
-
-                var name = Path.GetFileName(expertDir);
-
-                // Local sources override remote (and earlier local declarations)
-                catalog[name] = new ResolvedExpert(name, use.Source, expertMd);
-            }
+            var name = Path.GetFileName(expertDir);
+            catalog[name] = new ResolvedExpert(name, DefaultExpertsDir, expertMd);
         }
 
         return catalog;

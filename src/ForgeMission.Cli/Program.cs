@@ -40,19 +40,12 @@ static Command BuildInitCommand()
         var ast = TryParse(source);
         if (ast is null) return;
 
-        if (ast.Uses.Count == 0)
-        {
-            Console.WriteLine("No 'use' declarations found — adding default: use \"./experts\"");
-            // Treat as if use "./experts" was declared
-            ast = ast with { Uses = [new UseDeclaration("./experts")] };
-        }
-
-        Console.WriteLine("Resolving sources...\n");
+        Console.WriteLine("Resolving experts...\n");
 
         Dictionary<string, ResolvedExpert> catalog;
         try
         {
-            catalog = new SourceResolver().Resolve(ast.Uses, missionDir);
+            catalog = new SourceResolver().Resolve(missionDir);
         }
         catch (MclException ex)
         {
@@ -60,14 +53,13 @@ static Command BuildInitCommand()
             return;
         }
 
-        foreach (var use in ast.Uses)
-            Console.WriteLine($"  ✓ {use.Source}  ({catalog.Values.Count(e => e.Source == use.Source)} experts)");
+        Console.WriteLine($"  ✓ experts  ({catalog.Count} found)");
 
         Console.WriteLine("\nResolved:");
-        foreach (var (name, expert) in catalog.OrderBy(k => k.Key))
-            Console.WriteLine($"  {name,-30} {expert.Source}");
+        foreach (var (name, _) in catalog.OrderBy(k => k.Key))
+            Console.WriteLine($"  {name}");
 
-        var lockFile = LockFileIO.Build(ast.Uses.Select(u => u.Source).ToList(), catalog, missionDir);
+        var lockFile = LockFileIO.Build(catalog, missionDir);
         var lockPath = Path.Combine(missionDir, "mcl.lock");
         LockFileIO.Write(lockPath, lockFile);
 
@@ -217,21 +209,9 @@ static Command BuildValidateCommand()
         {
             Console.Error.WriteLine("warning: MCL006 mcl.lock not found — run 'forge init' to generate it");
         }
-        else
-        {
-            // Check sources in lock file still match use declarations
-            var lockFile = LockFileIO.Read(lockPath);
-            var currentSources = ast.Uses.Select(u => u.Source).ToHashSet(StringComparer.Ordinal);
-            var lockedSources  = lockFile.Sources.ToHashSet(StringComparer.Ordinal);
-            if (!currentSources.SetEquals(lockedSources))
-                Console.Error.WriteLine("warning: MCL006 mcl.lock is stale — run 'forge init' to update it");
-        }
-
         if (!File.Exists(lockPath))
         {
-            // Fall back to directory scan when no lock file
-            var expertsDir = Path.Combine(missionDir, "experts");
-            var expertDefs = TryLoadExperts(expertsDir);
+            var expertDefs = TryLoadExperts(Path.Combine(missionDir, SourceResolver.DefaultExpertsDir));
             if (expertDefs is null) return;
             if (TryValidate(ast, expertDefs))
                 Console.WriteLine("OK — mission is valid.");

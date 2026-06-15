@@ -2,7 +2,6 @@
 // Pair this with loop-demo/mission.mcl to see the difference.
 // Run: make demo-naive  (forge run)
 
-use "./experts"
 
 // LLM provider — override via MCL_PROVIDER, MCL_API_KEY, MCL_MODEL, MCL_ENDPOINT
 let provider = env("MCL_PROVIDER", "openai")

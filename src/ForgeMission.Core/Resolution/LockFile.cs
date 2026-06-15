@@ -7,7 +7,6 @@ namespace ForgeMission.Core.Resolution;
 public class LockFile
 {
     public int Version { get; set; } = 1;
-    public List<string> Sources { get; set; } = [];
     public Dictionary<string, LockFileExpert> Experts { get; set; } = new(StringComparer.Ordinal);
 }
 
@@ -44,11 +43,10 @@ public static class LockFileIO
         => Deserializer.Deserialize<LockFile>(File.ReadAllText(path));
 
     public static LockFile Build(
-        IReadOnlyList<string> sources,
         Dictionary<string, ResolvedExpert> catalog,
         string missionDirectory)
     {
-        var lf = new LockFile { Sources = [..sources] };
+        var lf = new LockFile();
         foreach (var (name, expert) in catalog.OrderBy(k => k.Key))
         {
             var relativePath = Path.GetRelativePath(missionDirectory, expert.ExpertMdPath);

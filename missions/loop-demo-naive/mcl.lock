@@ -1,7 +1,5 @@
 version: 1
-sources:
-- ./experts
 experts:
   ContextOverloaded:
-    source: ./experts
+    source: experts
     path: experts/ContextOverloaded/expert.md

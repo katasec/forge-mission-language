@@ -1,4 +1,3 @@
-using ForgeMission.Core.Parser;
 using ForgeMission.Core.Resolution;
 
 namespace ForgeMission.Tests.Resolution;
@@ -13,7 +12,7 @@ public class SourceResolverTests : IDisposable
 
     private void WriteExpert(string name)
     {
-        var expertDir = Path.Combine(_dir, "experts", name);
+        var expertDir = Path.Combine(_dir, SourceResolver.DefaultExpertsDir, name);
         Directory.CreateDirectory(expertDir);
         File.WriteAllText(Path.Combine(expertDir, "expert.md"), $"""
             ---
@@ -26,13 +25,12 @@ public class SourceResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_LocalPath_FindsExperts()
+    public void Resolve_FindsExpertsInDefaultDir()
     {
         WriteExpert("KubernetesArchitect");
         WriteExpert("SecurityArchitect");
 
-        var uses    = new List<UseDeclaration> { new("./experts") };
-        var catalog = new SourceResolver().Resolve(uses, _dir);
+        var catalog = new SourceResolver().Resolve(_dir);
 
         Assert.Equal(2, catalog.Count);
         Assert.True(catalog.ContainsKey("KubernetesArchitect"));
@@ -40,23 +38,10 @@ public class SourceResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_OciSource_ThrowsFms010()
+    public void Resolve_MissingExpertsDir_ThrowsFms005()
     {
-        var uses = new List<UseDeclaration> { new("oci://ghcr.io/forge/experts/platform:v1") };
-
         var ex = Assert.Throws<MclException>(() =>
-            new SourceResolver().Resolve(uses, _dir));
-
-        Assert.Equal(MclErrorCode.OciNotSupported, ex.Code);
-    }
-
-    [Fact]
-    public void Resolve_MissingSource_ThrowsFms005()
-    {
-        var uses = new List<UseDeclaration> { new("./nonexistent") };
-
-        var ex = Assert.Throws<MclException>(() =>
-            new SourceResolver().Resolve(uses, _dir));
+            new SourceResolver().Resolve(_dir));
 
         Assert.Equal(MclErrorCode.SourceNotFound, ex.Code);
     }
@@ -66,8 +51,7 @@ public class SourceResolverTests : IDisposable
     {
         WriteExpert("KubernetesArchitect");
 
-        var uses    = new List<UseDeclaration> { new("./experts") };
-        var catalog = new SourceResolver().Resolve(uses, _dir);
+        var catalog = new SourceResolver().Resolve(_dir);
 
         Assert.True(File.Exists(catalog["KubernetesArchitect"].ExpertMdPath));
     }

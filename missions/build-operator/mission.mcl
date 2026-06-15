@@ -2,7 +2,6 @@
 // Produces a production-grade Kubernetes operator design reviewed through
 // three lenses: architecture, security, and principal engineering.
 
-use "./experts"
 
 // LLM provider — override via MCL_PROVIDER, MCL_API_KEY, MCL_MODEL, MCL_ENDPOINT
 let provider = env("MCL_PROVIDER", "openai")

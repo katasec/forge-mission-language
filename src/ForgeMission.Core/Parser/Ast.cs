@@ -1,12 +1,9 @@
 namespace ForgeMission.Core.Parser;
 
 public record Program(
-    IReadOnlyList<UseDeclaration> Uses,
     IReadOnlyList<LetBinding> Bindings,
     IReadOnlyList<Declaration> Declarations,
     IReadOnlyList<OutputDeclaration> Outputs);
-
-public record UseDeclaration(string Source);
 
 public record OutputDeclaration(string MissionName, string? FilePath);
 

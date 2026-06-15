@@ -230,57 +230,24 @@ public class ParserTests
         Assert.Equal("myStyle", value.Name);
     }
 
-    // Phase 10 — use declarations
+    // use is removed — experts are always loaded from ./experts implicitly
 
     [Fact]
-    public void UseDeclaration_LocalPath_ParsesCorrectly()
+    public void UseDeclaration_ThrowsParseException()
     {
         var source = """
             use "./experts"
             mission BuildOperator = KubernetesArchitect
             """;
 
-        var result = MclParser.Parse(source);
-
-        var use = Assert.Single(result.Uses);
-        Assert.Equal("./experts", use.Source);
+        Assert.Throws<ParseException>(() => MclParser.Parse(source));
     }
 
     [Fact]
-    public void UseDeclaration_OciUri_ParsesCorrectly()
-    {
-        var source = """
-            use "oci://ghcr.io/forge/experts/platform:v1"
-            mission BuildOperator = KubernetesArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        var use = Assert.Single(result.Uses);
-        Assert.Equal("oci://ghcr.io/forge/experts/platform:v1", use.Source);
-    }
-
-    [Fact]
-    public void MultipleUseDeclarations_ParseInOrder()
-    {
-        var source = """
-            use "./experts"
-            use "oci://ghcr.io/forge/experts/platform:v1"
-            mission BuildOperator = KubernetesArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        Assert.Equal(2, result.Uses.Count);
-        Assert.Equal("./experts", result.Uses[0].Source);
-        Assert.Equal("oci://ghcr.io/forge/experts/platform:v1", result.Uses[1].Source);
-    }
-
-    [Fact]
-    public void NoUseDeclarations_UsesIsEmpty()
+    public void NoUseDeclaration_ParsesCorrectly()
     {
         var result = MclParser.Parse("mission BuildOperator = KubernetesArchitect");
-        Assert.Empty(result.Uses);
+        Assert.Single(result.Declarations);
     }
 
     // Comments
