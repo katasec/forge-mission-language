@@ -22,6 +22,7 @@
 | [Phase 15 — Token Streaming](phases/phase-15-streaming.md) | `IAsyncEnumerable<string>` from runner; chunks forwarded to `StepWriter` live; no more silent wait per expert | Done |
 | [Phase 16 — FML → MCL Rename](phases/phase-16-fms-rename.md) | Full rename: binary (mcl), extension (.mcl), grammar, generated parser classes, docs. | Done |
 | [Phase 17 — Provider Configuration](phases/phase-17-provider-config.md) | Make LLM provider fully configurable via `let` bindings (`provider`, `apiKey`, `model`, `endpoint`). Remove hardcoded OpenAI from CLI. | Done |
+| [Phase 18 — Drop MAF](phases/phase-18-drop-maf.md) | Replace `MafExpertRunner` with `DirectExpertRunner` (direct `IChatClient` calls). Remove `Microsoft.Agents.AI` packages. Primary AOT unblocking step. | Done |
 
 ## Design docs
 

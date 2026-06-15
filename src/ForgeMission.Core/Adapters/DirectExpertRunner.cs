@@ -2,24 +2,16 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using ForgeMission.Core.Experts;
 using ForgeMission.Core.Runtime;
-using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
 namespace ForgeMission.Core.Adapters;
 
-/// <summary>
-/// IExpertRunner implementation backed by Microsoft Agent Framework.
-/// This is the only file in the codebase that touches MAF.
-/// </summary>
-public class MafExpertRunner(IChatClient chatClient) : IExpertRunner
+public class DirectExpertRunner(IChatClient chatClient) : IExpertRunner
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    // StepEnvelopeContext.Default.Options has PropertyNameCaseInsensitive = true
+    // and a TypeInfoResolver — required for AOT's GetResponseAsync<T>.
+    private static readonly JsonSerializerOptions _jsonOptions = StepEnvelopeContext.Default.Options;
 
-    // Appended to system prompt only for streaming calls — instructs the LLM to emit JSON
-    // that ParseStreamedEnvelope can deserialise into StepEnvelope.
     private const string StreamingJsonInstruction = """
 
 
@@ -35,9 +27,12 @@ Or on failure:
         CancellationToken ct = default)
     {
         var (userMessage, systemPrompt) = BuildMessages(expert, context);
-        var agent    = new ChatClientAgent(chatClient, systemPrompt, expert.Name);
-        var session  = await agent.CreateSessionAsync(ct);
-        var response = await agent.RunAsync<StepEnvelope>(userMessage, session, _jsonOptions, new ChatClientAgentRunOptions(), ct);
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.System, systemPrompt),
+            new(ChatRole.User, userMessage)
+        };
+        var response = await chatClient.GetResponseAsync<StepEnvelope>(messages, _jsonOptions, cancellationToken: ct);
         return response.Result;
     }
 
@@ -47,10 +42,12 @@ Or on failure:
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var (userMessage, systemPrompt) = BuildMessages(expert, context);
-        var agent   = new ChatClientAgent(chatClient, systemPrompt + StreamingJsonInstruction, expert.Name);
-        var session = await agent.CreateSessionAsync(ct);
-
-        await foreach (var update in agent.RunStreamingAsync(userMessage, session, new ChatClientAgentRunOptions(), ct))
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.System, systemPrompt + StreamingJsonInstruction),
+            new(ChatRole.User, userMessage)
+        };
+        await foreach (var update in chatClient.GetStreamingResponseAsync(messages, cancellationToken: ct))
         {
             if (!string.IsNullOrEmpty(update.Text))
                 yield return update.Text;

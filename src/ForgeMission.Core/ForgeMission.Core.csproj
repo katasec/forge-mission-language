@@ -9,9 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.10.0" />
-    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.10.0" />
-    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.7.0" />
+<PackageReference Include="YamlDotNet" Version="18.0.0" />
   </ItemGroup>
 
 </Project>

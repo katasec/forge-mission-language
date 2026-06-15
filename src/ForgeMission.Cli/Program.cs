@@ -381,7 +381,7 @@ static IExpertRunner? TryBuildRunner(string provider, string apiKey, string mode
         "azure" => null!,  // caught below
 
         "anthropic" => throw new NotSupportedException(
-            "Anthropic provider is not yet supported — awaiting MAF Anthropic adapter."),
+            "Anthropic provider is not yet supported."),
 
         _ => null!
     };
@@ -392,7 +392,7 @@ static IExpertRunner? TryBuildRunner(string provider, string apiKey, string mode
         return null;
     }
 
-    return new MafExpertRunner(chatClient);
+    return new DirectExpertRunner(chatClient);
 }
 
 static Dictionary<string, string>? ParseVars(string[] vars)

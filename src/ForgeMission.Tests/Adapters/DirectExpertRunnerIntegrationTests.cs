@@ -11,7 +11,7 @@ namespace ForgeMission.Tests.Adapters;
 /// Integration tests against a real LLM. Skipped automatically if OPENAI_API_KEY is not set.
 /// Run with: OPENAI_API_KEY=sk-... dotnet test --filter Category=Integration
 /// </summary>
-public class MafExpertRunnerIntegrationTests
+public class DirectExpertRunnerIntegrationTests
 {
     private static readonly string? ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
@@ -33,7 +33,7 @@ public class MafExpertRunnerIntegrationTests
             "Summary",
             "You are a concise summariser. Summarise the input in one sentence.");
 
-        var runner = new MafExpertRunner(BuildChatClient());
+        var runner = new DirectExpertRunner(BuildChatClient());
         var context = new Dictionary<string, object> { ["output"] = "The sky is blue because of Rayleigh scattering of sunlight." };
         var result = await runner.RunAsync(expert, context);
 
@@ -61,7 +61,7 @@ public class MafExpertRunnerIntegrationTests
         };
 
         var stepWriter = new StringWriter();
-        var runner     = new PipelineRunner(new MafExpertRunner(BuildChatClient()));
+        var runner     = new PipelineRunner(new DirectExpertRunner(BuildChatClient()));
         var options    = new PipelineRunOptions("TestMission", StepWriter: stepWriter);
 
         var result = await runner.RunAsync(ast, experts, options);

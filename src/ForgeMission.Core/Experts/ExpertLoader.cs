@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ForgeMission.Core.Parser;
 using ForgeMission.Core.Resolution;
 using YamlDotNet.Serialization;
@@ -7,6 +8,10 @@ namespace ForgeMission.Core.Experts;
 
 public class ExpertLoader(string expertsDirectory)
 {
+    // ExpertFrontmatter is a private POCO directly instantiated here; DynamicDependency
+    // ensures the trimmer keeps it so YamlDotNet's reflection path can find its members.
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ExpertFrontmatter))]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Type preserved via DynamicDependency")]
     private static readonly IDeserializer Yaml = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()

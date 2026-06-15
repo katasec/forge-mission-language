@@ -8,3 +8,7 @@ public record StepEnvelope(
     [property: JsonPropertyName("status")] string Status = "pass",
     [property: JsonPropertyName("reason")] string? Reason = null,
     [property: JsonPropertyName("meta")]   IReadOnlyDictionary<string, JsonElement>? Meta = null);
+
+[JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+[JsonSerializable(typeof(StepEnvelope))]
+internal partial class StepEnvelopeContext : JsonSerializerContext { }

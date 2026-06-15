@@ -2,7 +2,7 @@
 
 ## Guiding principle
 
-MAF (Microsoft Agent Framework) is an internal implementation detail. It does not appear above the adapter layer. The parser, AST, pipeline runner, and CLI know nothing about MAF.
+The direct IChatClient adapter is the only LLM integration point. It does not appear above the adapter layer. The parser, AST, pipeline runner, and CLI know nothing about the underlying provider.
 
 ## Components
 
@@ -53,11 +53,11 @@ Knows nothing about MAF. Depends only on `IExpertRunner`.
 
 ---
 
-### 4. MAF Adapter — `ForgeMission.Core/Adapters/MafExpertRunner.cs`
+### 4. Direct IChatClient Adapter — `ForgeMission.Core/Adapters/DirectExpertRunner.cs`
 
-The single place MAF exists in the codebase. Implements `IExpertRunner`. Creates a `ChatClientAgent` with the expert's system prompt, runs it on an `AgentThread` with the incoming context, returns the response as a string.
+The single place provider interaction exists in the codebase. Implements `IExpertRunner`. Builds a `[System, User]` message list, calls `IChatClient.CompleteAsync()` (or `CompleteStreamingAsync()` for streaming), deserialises the JSON response into `StepEnvelope`.
 
-One file. Swappable without touching anything else.
+One file. Swappable without touching anything else. No MAF dependency.
 
 **Testable:** integration test against a real LLM.
 
@@ -87,7 +87,7 @@ CLI
       └→ Parser           (produces AST)
       └→ Expert Loader    (resolves markdown)
       └→ IExpertRunner
-           └→ MAF Adapter (hidden — only impl of IExpertRunner)
+           └→ Direct IChatClient Adapter (hidden — only impl of IExpertRunner)
 ```
 
 Strictly one direction. Nothing flows upward.
@@ -99,7 +99,7 @@ ForgeMission.Cli
   └→ ForgeMission.Core
 
 ForgeMission.Core
-  └→ Microsoft.Agents.*   (MAF — adapter only)
+  └→ Microsoft.Extensions.AI   (IChatClient abstraction — adapter only)
 ```
 
 ## Output structure

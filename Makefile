@@ -31,13 +31,10 @@ build: ## Build the solution (debug)
 test: ## Run all tests
 	dotnet test src/
 
-install: ## Publish single-file binary to ~/.local/bin
+install: ## Publish native AOT binary to ~/.local/bin
 	dotnet publish $(CLI) \
 		-c Release \
 		-r $(RID) \
-		--self-contained false \
-		-p:PublishSingleFile=true \
-		-p:DebugType=none \
 		-o $(INSTALL_DIR)
 	@echo "Installed: $(INSTALL_DIR)/forge"
 

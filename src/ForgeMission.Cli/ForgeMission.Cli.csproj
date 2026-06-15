@@ -6,7 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.10.0" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.7.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.9" />
   </ItemGroup>
 
@@ -16,6 +17,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>forge</AssemblyName>
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
+
+  <!-- Native AOT on macOS: system libs needed by the AOT runtime live under Homebrew -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('osx'))">
+    <LinkerArg Include="-L/opt/homebrew/lib" />
+    <LinkerArg Include="-L/opt/homebrew/opt/openssl@3/lib" />
+  </ItemGroup>
 
 </Project>

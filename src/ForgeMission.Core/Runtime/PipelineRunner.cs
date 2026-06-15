@@ -89,13 +89,11 @@ public class PipelineRunner(IExpertRunner expertRunner)
         return lastResult!;
     }
 
-    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
-
     private static StepEnvelope ParseStreamedEnvelope(string raw)
     {
         try
         {
-            return JsonSerializer.Deserialize<StepEnvelope>(raw.Trim(), _jsonOptions)
+            return JsonSerializer.Deserialize(raw.Trim(), StepEnvelopeContext.Default.StepEnvelope)
                 ?? new StepEnvelope(raw);
         }
         catch (JsonException)

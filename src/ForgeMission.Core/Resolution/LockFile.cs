@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -18,10 +19,19 @@ public class LockFileExpert
 
 public static class LockFileIO
 {
+    // LockFile/LockFileExpert are public POCOs directly instantiated here, so the trimmer
+    // preserves them. The IL3050 on DeserializerBuilder is conservative — reflection works
+    // in AOT for preserved types.
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LockFile))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LockFileExpert))]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Types preserved via DynamicDependency")]
     private static readonly ISerializer Serializer = new SerializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .Build();
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LockFile))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LockFileExpert))]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Types preserved via DynamicDependency")]
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
