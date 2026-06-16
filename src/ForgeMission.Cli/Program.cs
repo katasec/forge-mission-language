@@ -695,13 +695,19 @@ static Command BuildAgentStartCommand()
             return;
         }
 
-        var cwd = Directory.GetCurrentDirectory();
+        // Mount the git root so relative mission paths in agent.yaml resolve correctly.
+        // Fall back to the agent file's directory if not in a git repo.
+        var agentDir     = Path.GetDirectoryName(agentFileFull)!;
+        var workspaceRoot = FindGitRoot(agentDir) ?? agentDir;
+        var agentInWorkspace = "/workspace/" + Path.GetRelativePath(workspaceRoot, agentFileFull).Replace('\\', '/');
+
         await DockerCli.RunContainerAsync(
             name:          containerName,
             image:         forgeImage,
-            cmd:           ["serve", "/workspace/agent.yaml"],
-            env:           BuildEnvArray("MCL_API_KEY", "MCL_MODEL", "MCL_PROVIDER", "MCL_ENDPOINT"),
-            binds:         [$"{cwd}:/workspace"],
+            cmd:           ["serve", agentInWorkspace],
+            env:           [.. BuildEnvArray("MCL_API_KEY", "MCL_MODEL", "MCL_PROVIDER", "MCL_ENDPOINT"),
+                           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1"],
+            binds:         [$"{workspaceRoot}:/workspace"],
             hostPort:      config.Port,
             containerPort: config.Port,
             network:       "forge-net");
@@ -855,6 +861,17 @@ static Command BuildWebuiStopCommand()
 
 // ---------------------------------------------------------------------------
 // Docker helpers
+
+static string? FindGitRoot(string startDir)
+{
+    var dir = startDir;
+    while (dir is not null)
+    {
+        if (Directory.Exists(Path.Combine(dir, ".git"))) return dir;
+        dir = Path.GetDirectoryName(dir);
+    }
+    return null;
+}
 
 static string[] BuildEnvArray(params string[] vars) =>
     vars
