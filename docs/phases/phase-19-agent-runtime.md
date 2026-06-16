@@ -52,7 +52,7 @@ Example `agent.yaml`:
 ```yaml
 mission: ./mission.mcl
 port: 8080
-model: build-operator-v1     # model name advertised to OAI clients
+id: build-operator-v1
 ```
 
 ### `forge serve` is the new CLI verb
@@ -67,28 +67,28 @@ Mirrors the existing pattern:
 - `forge run` executes the mission
 - `forge serve` activates the agent configuration in `agent.yaml`
 
-### `Katasec.AgentHost` is a separate library
+### `Katasec.OaiServer` is a separate library
 
-The OAI endpoint plumbing lives in a new library: `katasec/agent-host-dotnet`.
+The OAI endpoint plumbing lives in a new library: `katasec/oai-server-dotnet`.
 
 This follows the same pattern as `katasec/oci-client-dotnet`:
 
 | Concern | MCL grammar | CLI verb | Library |
 |---------|-------------|----------|---------|
 | OCI experts | `from "registry" version "tag"` | `forge init` | `Katasec.OciClient` |
-| Agent hosting | `agent.yaml` | `forge serve` | `Katasec.AgentHost` |
+| Agent hosting | `agent.yaml` | `forge serve` | `Katasec.OaiServer` |
 
-`Katasec.AgentHost` owns:
+`Katasec.OaiServer` owns:
 - ASP.NET Core minimal API setup
 - `/v1/chat/completions` request/response shapes (STJ source-gen for AOT safety)
 - SSE streaming in OAI format
 - Session handling (see open questions)
 
-`Katasec.AgentHost` takes an `IChatClient` — it has no knowledge of MCL, missions, or experts. Forge wires a mission-backed `IChatClient` and hands it to the library. The library is independently useful for any `IChatClient` implementation.
+`Katasec.OaiServer` takes an `IChatClient` — it has no knowledge of MCL, missions, or experts. Forge wires a mission-backed `IChatClient` and hands it to the library. The library is independently useful for any `IChatClient` implementation.
 
 ### MAF reference
 
-MAF (Microsoft Agent Framework) previously provided this OAI endpoint capability. It was dropped in Phase 18 because it was incompatible with Native AOT. `Katasec.AgentHost` is the AOT-safe replacement, scoped to exactly the capability needed.
+MAF (Microsoft Agent Framework) previously provided this OAI endpoint capability. It was dropped in Phase 18 because it was incompatible with Native AOT. `Katasec.OaiServer` is the AOT-safe replacement, scoped to exactly the capability needed.
 
 Reference: https://learn.microsoft.com/en-us/agent-framework/integrations/openai-endpoints
 
@@ -120,7 +120,7 @@ First implementation: `LocalFileSessionStore` (JSON files under `~/.forge/sessio
 
 ```csharp
 services.AddSingleton<ISessionStore, LocalFileSessionStore>();
-services.AddSingleton<IAgentHost, OaiAgentHost>();
+services.AddSingleton<IOaiServer, OaiAgentHost>();
 ```
 
 Swapping the persistence provider later is a one-line registration change — nothing else moves. `LocalFileSessionStore` is the right first-pass default; Redis or SQLite can be introduced when multi-instance or cross-restart persistence is needed.
@@ -152,7 +152,7 @@ port: 8080
 id: build-operator-v1
 ```
 
-`id` is the agent's addressable identity — what OAI clients pass in the `model` field of their requests. `Katasec.AgentHost` handles the `id` → OAI `model` field translation internally. Users never interact with the OAI wire format detail.
+`id` is the agent's addressable identity — what OAI clients pass in the `model` field of their requests. `Katasec.OaiServer` handles the `id` → OAI `model` field translation internally. Users never interact with the OAI wire format detail.
 
 `id` was chosen over `model` (conflicts with the LLM model `let` binding in `.mcl`) and `name` (ambiguous between display name and identifier).
 
@@ -166,7 +166,7 @@ Two distinct concerns:
 
 ### 4. Model name advertised — RESOLVED
 
-Closed by the `id` decision in Question 2. The agent advertises itself as the value of `id` in `agent.yaml`. Any `model` field sent by an incoming OAI client request is ignored — the agent knows its own identity from its config. `Katasec.AgentHost` handles this internally.
+Closed by the `id` decision in Question 2. The agent advertises itself as the value of `id` in `agent.yaml`. Any `model` field sent by an incoming OAI client request is ignored — the agent knows its own identity from its config. `Katasec.OaiServer` handles this internally.
 
 ---
 
@@ -182,7 +182,7 @@ Closed by the `id` decision in Question 2. The agent advertises itself as the va
 
 ## Implementation sketch (post-design)
 
-1. Create `katasec/agent-host-dotnet` repo
+1. Create `katasec/oai-server-dotnet` repo
    - AOT-safe ASP.NET Core minimal API
    - OAI request/response POCOs with STJ source-gen
    - SSE streaming
@@ -194,8 +194,8 @@ Closed by the `id` decision in Question 2. The agent advertises itself as the va
    - Reads `agent.yaml`
    - Runs `forge init` check (experts must be resolved)
    - Wires `PipelineRunner` behind an `IChatClient` adapter
-   - Hands to `Katasec.AgentHost`
+   - Hands to `Katasec.OaiServer`
 
-4. Add `Katasec.AgentHost` package reference to `ForgeMission.Cli.csproj`
+4. Add `Katasec.OaiServer` package reference to `ForgeMission.Cli.csproj`
 
 5. End-to-end test: `forge serve` → Open WebUI → mission runs → response streams back
