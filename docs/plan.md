@@ -27,7 +27,7 @@
 | [Phase 20 — Parser Project Extraction](phases/phase-20-parser-extraction.md) | Move `ForgeMission.Core/Parser` into a standalone `ForgeMission.Parser` project. Clean compiler/runtime boundary; enables reuse in tooling (language server, IDE plugins). | Done |
 | [Phase 21 — Parallel Steps + Named Outputs](phases/phase-21-parallel-steps.md) | `[A, B, C]` bracket syntax runs experts concurrently; each step's output stored as `{{StepName.output}}`; fan-out/fan-in patterns. Motivated by image analysis (UC-1) and trading signals (UC-2). | Design |
 | [Phase 22 — Non-LLM Expert Kinds](phases/phase-22-non-llm-experts.md) | `kind` field in expert frontmatter (`llm` default, `onnx`, `http`). Static runner dispatch, no reflection. Context bag gains typed numeric values. Motivated by log anomaly detection (UC-3). | Design |
-| [Phase 23 — Container Commands](phases/phase-23-container-commands.md) | `forge agent start/stop` and `forge webui start/stop` — run agent and Open WebUI in Docker; shared prereq checker with Spectre.Console TUI; Process.Start docker CLI (AOT-safe). Hub + 4 spokes. | Design |
+| [Phase 23 — Container Commands](phases/phase-23-container-commands.md) | `forge agent start/stop` and `forge webui start/stop` — run agent and Open WebUI in Docker; shared prereq checker with Spectre.Console TUI; Process.Start docker CLI (AOT-safe). Hub + 4 spokes. | Done |
 
 ## Under discussion
 
