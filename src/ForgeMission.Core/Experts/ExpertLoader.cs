@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 using ForgeMission.Core.Resolution;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;

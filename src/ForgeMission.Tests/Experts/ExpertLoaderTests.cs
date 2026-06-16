@@ -1,5 +1,5 @@
 using ForgeMission.Core.Experts;
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 using ForgeMission.Core.Resolution;
 
 namespace ForgeMission.Tests.Experts;

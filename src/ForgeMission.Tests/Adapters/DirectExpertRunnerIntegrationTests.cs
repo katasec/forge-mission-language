@@ -1,6 +1,6 @@
 using ForgeMission.Core.Adapters;
 using ForgeMission.Core.Experts;
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 using ForgeMission.Core.Runtime;
 using Microsoft.Extensions.AI;
 using OpenAI;

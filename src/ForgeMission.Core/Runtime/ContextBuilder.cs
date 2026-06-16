@@ -1,4 +1,4 @@
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 
 namespace ForgeMission.Core.Runtime;
 

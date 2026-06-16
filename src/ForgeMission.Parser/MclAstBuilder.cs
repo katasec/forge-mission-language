@@ -1,4 +1,4 @@
-namespace ForgeMission.Core.Parser;
+namespace ForgeMission.Parser;
 
 internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
 {
@@ -64,7 +64,7 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
 
         if (ctx.ociSource() is { } oci)
         {
-            var strings = oci.STRING();
+            var strings  = oci.STRING();
             var registry = StripQuotes(strings[0].GetText());
             var version  = StripQuotes(strings[1].GetText());
             return new ExpertDeclaration(name, @params, Pipeline: null, Source: new OciSource(registry, version));

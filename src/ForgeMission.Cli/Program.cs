@@ -1,7 +1,7 @@
 using System.CommandLine;
 using ForgeMission.Core.Adapters;
 using ForgeMission.Core.Experts;
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 using ForgeMission.Core.Resolution;
 using ForgeMission.Core.Runtime;
 using static ForgeMission.Core.Runtime.MissionStatus;
@@ -10,7 +10,7 @@ using OpenAI;
 using System.ClientModel;
 using Katasec.OciClient;
 using Katasec.OaiServer;
-using MclProgram = ForgeMission.Core.Parser.Program;
+using MclProgram = ForgeMission.Parser.Program;
 
 var rootCommand = new RootCommand("forge — Mission Control Language runtime");
 rootCommand.Add(BuildInitCommand());

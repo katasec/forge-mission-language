@@ -19,7 +19,7 @@
 // Ambiguous reference in cref attribute
 #pragma warning disable 419
 
-namespace ForgeMission.Core.Parser {
+namespace ForgeMission.Parser {
 using Antlr4.Runtime.Misc;
 using IParseTreeListener = Antlr4.Runtime.Tree.IParseTreeListener;
 using IToken = Antlr4.Runtime.IToken;
@@ -192,4 +192,4 @@ public interface IMclGrammarListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitEnvCall([NotNull] MclGrammarParser.EnvCallContext context);
 }
-} // namespace ForgeMission.Core.Parser
+} // namespace ForgeMission.Parser

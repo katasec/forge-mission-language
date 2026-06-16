@@ -1,4 +1,4 @@
-namespace ForgeMission.Core.Parser;
+namespace ForgeMission.Parser;
 
 public record Program(
     IReadOnlyList<LetBinding> Bindings,

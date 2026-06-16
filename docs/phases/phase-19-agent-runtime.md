@@ -1,6 +1,6 @@
 # Phase 19 — Agent Runtime
 
-**Status:** Design  
+**Status:** Done  
 **Depends on:** Phase 11 (OCI), Phase 18 (Native AOT)
 
 ---

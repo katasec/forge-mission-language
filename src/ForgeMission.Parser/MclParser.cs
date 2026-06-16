@@ -1,6 +1,6 @@
 using Antlr4.Runtime;
 
-namespace ForgeMission.Core.Parser;
+namespace ForgeMission.Parser;
 
 public record Diagnostic(string Message, int Line, int Column);
 

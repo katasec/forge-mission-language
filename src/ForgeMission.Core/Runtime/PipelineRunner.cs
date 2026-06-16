@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ForgeMission.Core.Experts;
-using ForgeMission.Core.Parser;
+using ForgeMission.Parser;
 
 namespace ForgeMission.Core.Runtime;
 
@@ -53,15 +53,19 @@ public class PipelineRunner(IExpertRunner expertRunner)
                     await sw2.WriteLineAsync($"→ {step.ExpertName}...");
 
                 StepEnvelope envelope;
-                if (options.StepWriter is { } sw3)
+                if (options.StepWriter is not null || options.ContentWriter is not null)
                 {
                     var sb = new StringBuilder();
                     await foreach (var chunk in expertRunner.StreamAsync(expert, context, ct))
                     {
-                        await sw3.WriteAsync(chunk);
+                        if (options.StepWriter is { } sw3)
+                            await sw3.WriteAsync(chunk);
+                        if (options.ContentWriter is { } cw)
+                            await cw.WriteAsync(chunk);
                         sb.Append(chunk);
                     }
-                    await sw3.WriteLineAsync("\n");
+                    if (options.StepWriter is { } sw4)
+                        await sw4.WriteLineAsync("\n");
                     envelope = ParseStreamedEnvelope(sb.ToString());
                 }
                 else
