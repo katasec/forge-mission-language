@@ -9,6 +9,7 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 using System.ClientModel;
 using Katasec.OciClient;
+using Katasec.OaiServer;
 using MclProgram = ForgeMission.Core.Parser.Program;
 
 var rootCommand = new RootCommand("forge — Mission Control Language runtime");
@@ -19,6 +20,7 @@ rootCommand.Add(BuildListCommand());
 rootCommand.Add(BuildExpertCommand());
 rootCommand.Add(BuildLoginCommand());
 rootCommand.Add(BuildCleanCommand());
+rootCommand.Add(BuildServeCommand());
 
 return await rootCommand.Parse(args).InvokeAsync();
 
@@ -402,6 +404,98 @@ static Command BuildLoginCommand()
         Console.WriteLine($"Credentials saved for {registry}");
 
         await Task.CompletedTask;
+    });
+
+    return cmd;
+}
+
+// ---------------------------------------------------------------------------
+// forge serve
+
+static Command BuildServeCommand()
+{
+    var agentArg = new Argument<FileInfo?>("agent") { Description = "Path to agent.yaml (default: agent.yaml)", Arity = ArgumentArity.ZeroOrOne };
+
+    var cmd = new Command("serve", "Serve a mission as an OpenAI-compatible endpoint");
+    cmd.Add(agentArg);
+
+    cmd.SetAction(async result =>
+    {
+        var agentFile = result.GetValue(agentArg)
+            ?? new FileInfo(Path.GetFullPath("agent.yaml"));
+
+        if (!agentFile.Exists) { Die($"Agent config not found: {agentFile.FullName}\nCreate an agent.yaml next to your mission.mcl."); return; }
+
+        AgentConfig config;
+        try { config = AgentConfigLoader.Load(agentFile.FullName); }
+        catch (Exception ex) { Die($"Cannot read agent.yaml: {ex.Message}"); return; }
+
+        var agentDir    = agentFile.DirectoryName!;
+        var missionPath = Path.GetFullPath(Path.Combine(agentDir, config.Mission));
+        var lockPath    = Path.Combine(Path.GetDirectoryName(missionPath)!, "mcl.lock");
+
+        if (!File.Exists(missionPath)) { Die($"Mission file not found: {missionPath}"); return; }
+        if (!File.Exists(lockPath))    { Die("MCL007 Mission not initialised — run 'forge init' first."); return; }
+
+        var source = await TryReadFile(missionPath);
+        if (source is null) return;
+
+        var ast = TryParse(source);
+        if (ast is null) return;
+
+        // Pass 2: assert OCI experts are cached
+        foreach (var decl in ast.Declarations.OfType<ExpertDeclaration>().Where(e => e.Source is not null))
+        {
+            var src      = decl.Source!;
+            var slash    = src.Registry.IndexOf('/');
+            var registry = slash >= 0 ? src.Registry[..slash] : src.Registry;
+            var ociName  = slash >= 0 ? src.Registry[(slash + 1)..] : src.Registry;
+            if (!File.Exists(ForgeCache.ExpertMdPath(registry, ociName, src.Version)))
+            {
+                Die($"MCL010 Expert '{decl.Name}' not resolved — run 'forge init' first.");
+                return;
+            }
+        }
+
+        LockFile lockFile;
+        try { lockFile = LockFileIO.Read(lockPath); }
+        catch (Exception ex) { Die($"Cannot read mcl.lock: {ex.Message}"); return; }
+
+        Dictionary<string, ExpertDefinition> expertDefs;
+        try { expertDefs = ExpertLoader.LoadFromLockFile(lockFile, Path.GetDirectoryName(missionPath)!); }
+        catch (ExpertLoadException ex) { Die(ex.Message); return; }
+
+        if (!TryValidate(ast, expertDefs)) return;
+
+        Dictionary<string, object> seedContext;
+        try { seedContext = ContextBuilder.Seed(ast, new Dictionary<string, string>()); }
+        catch (InvalidOperationException ex) { Die(ex.Message); return; }
+
+        if (!seedContext.TryGetValue("apiKey", out var apiKeyObj) || string.IsNullOrWhiteSpace(apiKeyObj?.ToString()))
+        {
+            Die("Mission must declare an API key: let apiKey = env(\"MCL_API_KEY\")");
+            return;
+        }
+        if (!seedContext.TryGetValue("model", out var modelObj) || string.IsNullOrWhiteSpace(modelObj?.ToString()))
+        {
+            Die("Mission must declare a model: let model = env(\"MCL_MODEL\", \"gpt-4o-mini\")");
+            return;
+        }
+
+        var provider = seedContext.TryGetValue("provider", out var pObj) ? pObj.ToString()! : "openai";
+        var endpoint = seedContext.TryGetValue("endpoint", out var eObj) ? eObj.ToString()! : string.Empty;
+
+        var runner = TryBuildRunner(provider, apiKeyObj.ToString()!, modelObj.ToString()!, endpoint);
+        if (runner is null) return;
+
+        var missionClient = new MissionChatClient(ast, expertDefs, runner);
+        var app           = OaiServer.Build(missionClient, config.Id, config.Port);
+
+        Console.Error.WriteLine($"forge serve — agent '{config.Id}' listening on http://0.0.0.0:{config.Port}");
+        Console.Error.WriteLine($"  mission : {missionPath}");
+        Console.Error.WriteLine($"  endpoint: POST /v1/chat/completions");
+
+        await app.RunAsync();
     });
 
     return cmd;

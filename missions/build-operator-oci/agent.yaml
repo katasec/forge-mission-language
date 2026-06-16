@@ -1,0 +1,3 @@
+mission: ./mission.mcl
+port: 8080
+id: build-operator-v1
