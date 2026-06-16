@@ -10,6 +10,8 @@ using OpenAI;
 using System.ClientModel;
 using Katasec.OciClient;
 using Katasec.OaiServer;
+using Spectre.Console;
+using ForgeMission.Cli.Docker;
 using MclProgram = ForgeMission.Parser.Program;
 
 var rootCommand = new RootCommand("forge — Mission Control Language runtime");
@@ -21,6 +23,8 @@ rootCommand.Add(BuildExpertCommand());
 rootCommand.Add(BuildLoginCommand());
 rootCommand.Add(BuildCleanCommand());
 rootCommand.Add(BuildServeCommand());
+rootCommand.Add(BuildAgentCommand());
+rootCommand.Add(BuildWebuiCommand());
 
 return await rootCommand.Parse(args).InvokeAsync();
 
@@ -626,3 +630,222 @@ static void Die(string message)
     Console.Error.WriteLine($"error: {message}");
     Environment.Exit(1);
 }
+
+// ---------------------------------------------------------------------------
+// forge agent
+
+static Command BuildAgentCommand()
+{
+    var agentCmd = new Command("agent", "Manage forge agents running in Docker");
+    agentCmd.Add(BuildAgentStartCommand());
+    agentCmd.Add(BuildAgentStopCommand());
+    return agentCmd;
+}
+
+static Command BuildAgentStartCommand()
+{
+    var agentFileOpt = new Option<string?>("--agent-file") { Description = "Path to agent.yaml (default: ./agent.yaml)" };
+
+    var cmd = new Command("start", "Start forge serve inside a Docker container");
+    cmd.Add(agentFileOpt);
+
+    cmd.SetAction(async result =>
+    {
+        var agentFile = result.GetValue(agentFileOpt) ?? "./agent.yaml";
+        var agentFileFull = Path.GetFullPath(agentFile);
+
+        if (!File.Exists(agentFileFull))
+        {
+            Die($"Agent config not found: {agentFileFull}");
+            return;
+        }
+
+        AgentConfig config;
+        try { config = AgentConfigLoader.Load(agentFileFull); }
+        catch (Exception ex) { Die($"Cannot read agent.yaml: {ex.Message}"); return; }
+
+        var prereqs = new[]
+        {
+            DockerPrereqChecker.CheckDockerCli(),
+            DockerPrereqChecker.CheckDockerDaemon(),
+            DockerPrereqChecker.CheckPort(config.Port),
+            DockerPrereqChecker.CheckFileExists(agentFileFull, "agent.yaml"),
+        };
+
+        if (!DockerPrereqChecker.RunAndPrint(prereqs))
+        {
+            Environment.Exit(1);
+            return;
+        }
+
+        if (!await DockerCli.IsImagePresentAsync("forge:local"))
+        {
+            AnsiConsole.MarkupLine("[yellow]Building forge:local image...[/]");
+            await DockerCli.BuildImageAsync("forge:local", ".");
+        }
+
+        await DockerCli.EnsureNetworkAsync("forge-net");
+
+        var containerName = $"forge-agent-{config.Id}";
+        if (await DockerCli.ContainerExistsAsync(containerName))
+        {
+            AnsiConsole.MarkupLine($"[yellow]Container {containerName} already exists. Stop it first.[/]");
+            Environment.Exit(1);
+            return;
+        }
+
+        var cwd = Directory.GetCurrentDirectory();
+        var envArgs = BuildEnvArgs("MCL_API_KEY", "MCL_MODEL", "MCL_PROVIDER", "MCL_ENDPOINT");
+
+        var runArgs = $"-d --name {containerName} --network forge-net -p {config.Port}:{config.Port} " +
+                      $"-v {cwd}:/workspace {envArgs} " +
+                      $"forge:local serve /workspace/agent.yaml";
+
+        await DockerCli.StartContainerAsync(runArgs);
+
+        AnsiConsole.MarkupLine($"[green]✓[/] Agent [bold]{config.Id}[/] started");
+        AnsiConsole.MarkupLine($"  Endpoint : http://localhost:{config.Port}/v1");
+        AnsiConsole.MarkupLine($"  Container: {containerName}");
+        AnsiConsole.MarkupLine($"  Network  : forge-net");
+    });
+
+    return cmd;
+}
+
+static Command BuildAgentStopCommand()
+{
+    var agentFileOpt = new Option<string?>("--agent-file") { Description = "Path to agent.yaml (default: ./agent.yaml)" };
+
+    var cmd = new Command("stop", "Stop and remove the forge agent container");
+    cmd.Add(agentFileOpt);
+
+    cmd.SetAction(async result =>
+    {
+        var agentFile = result.GetValue(agentFileOpt) ?? "./agent.yaml";
+        var agentFileFull = Path.GetFullPath(agentFile);
+
+        if (!File.Exists(agentFileFull))
+        {
+            Die($"Agent config not found: {agentFileFull}");
+            return;
+        }
+
+        AgentConfig config;
+        try { config = AgentConfigLoader.Load(agentFileFull); }
+        catch (Exception ex) { Die($"Cannot read agent.yaml: {ex.Message}"); return; }
+
+        var containerName = $"forge-agent-{config.Id}";
+        await DockerCli.StopAndRemoveAsync(containerName);
+        AnsiConsole.MarkupLine($"[green]✓[/] Agent [bold]{config.Id}[/] stopped");
+    });
+
+    return cmd;
+}
+
+// ---------------------------------------------------------------------------
+// forge webui
+
+static Command BuildWebuiCommand()
+{
+    var webuiCmd = new Command("webui", "Manage Open WebUI connected to a forge agent");
+    webuiCmd.Add(BuildWebuiStartCommand());
+    webuiCmd.Add(BuildWebuiStopCommand());
+    return webuiCmd;
+}
+
+static Command BuildWebuiStartCommand()
+{
+    var agentFileOpt = new Option<string?>("--agent-file") { Description = "Path to agent.yaml (default: ./agent.yaml)" };
+    var portOpt = new Option<int?>("--port") { Description = "Host port for Open WebUI (default: 3000)" };
+
+    var cmd = new Command("start", "Start Open WebUI pre-configured to connect to the forge agent");
+    cmd.Add(agentFileOpt);
+    cmd.Add(portOpt);
+
+    cmd.SetAction(async result =>
+    {
+        var agentFile = result.GetValue(agentFileOpt) ?? "./agent.yaml";
+        var webuiPort = result.GetValue(portOpt) ?? 3000;
+        var agentFileFull = Path.GetFullPath(agentFile);
+
+        if (!File.Exists(agentFileFull))
+        {
+            Die($"Agent config not found: {agentFileFull}");
+            return;
+        }
+
+        AgentConfig config;
+        try { config = AgentConfigLoader.Load(agentFileFull); }
+        catch (Exception ex) { Die($"Cannot read agent.yaml: {ex.Message}"); return; }
+
+        var prereqs = new[]
+        {
+            DockerPrereqChecker.CheckDockerCli(),
+            DockerPrereqChecker.CheckDockerDaemon(),
+            DockerPrereqChecker.CheckFileExists(agentFileFull, "agent.yaml"),
+        };
+
+        if (!DockerPrereqChecker.RunAndPrint(prereqs))
+        {
+            Environment.Exit(1);
+            return;
+        }
+
+        var agentContainerName = $"forge-agent-{config.Id}";
+        var agentUrl = $"http://{agentContainerName}:{config.Port}/v1";
+
+        if (!await DockerCli.IsContainerRunningAsync(agentContainerName))
+        {
+            AnsiConsole.MarkupLine($"[yellow]Agent container {agentContainerName} is not running.[/]");
+            AnsiConsole.MarkupLine("[yellow]Run 'forge agent start' first.[/]");
+            Environment.Exit(1);
+            return;
+        }
+
+        await DockerCli.EnsureNetworkAsync("forge-net");
+
+        if (await DockerCli.ContainerExistsAsync("open-webui"))
+        {
+            AnsiConsole.MarkupLine("[yellow]open-webui container already exists. Stop it first.[/]");
+            Environment.Exit(1);
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[grey]Pulling open-webui image (first run may take a minute)...[/]");
+
+        var runArgs = $"-d --name open-webui --network forge-net -p {webuiPort}:8080 " +
+                      $"-v open-webui-data:/app/backend/data " +
+                      $"-e OPENAI_API_BASE_URL={agentUrl} -e OPENAI_API_KEY=forge " +
+                      $"ghcr.io/open-webui/open-webui:main";
+
+        await DockerCli.StartContainerAsync(runArgs);
+
+        AnsiConsole.MarkupLine("[green]✓[/] Open WebUI started");
+        AnsiConsole.MarkupLine($"  URL      : http://localhost:{webuiPort}");
+        AnsiConsole.MarkupLine($"  Agent    : {agentUrl}");
+        AnsiConsole.MarkupLine($"  Container: open-webui");
+    });
+
+    return cmd;
+}
+
+static Command BuildWebuiStopCommand()
+{
+    var cmd = new Command("stop", "Stop and remove the Open WebUI container");
+
+    cmd.SetAction(async _ =>
+    {
+        await DockerCli.StopAndRemoveAsync("open-webui");
+        AnsiConsole.MarkupLine("[green]✓[/] Open WebUI stopped");
+    });
+
+    return cmd;
+}
+
+// ---------------------------------------------------------------------------
+// Docker helpers
+
+static string BuildEnvArgs(params string[] vars) =>
+    string.Join(" ", vars
+        .Where(v => Environment.GetEnvironmentVariable(v) is not null)
+        .Select(v => $"-e {v}"));

@@ -47,6 +47,10 @@ demo-naive: ## Run the one-shot loop demo — no retry, raw first-attempt output
 demo-reliable: ## Run the loop demo — retries until quality passes, shows convergence (requires forge in PATH)
 	cd missions/loop-demo && forge run --steps
 
+build-linux: ## Build linux-x64 binary into repo root (needed for docker build)
+	dotnet publish $(CLI) -c Release -r linux-x64 -o . --self-contained
+	@echo "forge-linux-x64 ready"
+
 clean: ## Remove build artefacts (bin/ and obj/)
 	dotnet clean src/
 	find src/ -type d \( -name bin -o -name obj \) | xargs rm -rf
