@@ -82,6 +82,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Ad-hoc sign the macOS binary so Gatekeeper doesn't immediately block it.
+      # This is not a trusted Apple Developer ID signature — it won't pass
+      # notarization — but it removes the "unidentified developer" hard block
+      # that an unsigned binary triggers on download.
+      - name: Ad-hoc sign (macOS only)
+        if: runner.os == 'macOS'
+        run: codesign --force --sign - dist/${{ matrix.binary }}
+
       - name: Upload release asset
         shell: bash
         run: |
