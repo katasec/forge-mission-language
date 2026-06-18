@@ -61,7 +61,8 @@ public sealed class CopilotSdkTests
     {
         var apiKey       = Environment.GetEnvironmentVariable("MCL_API_KEY");
         var copilotToken = Environment.GetEnvironmentVariable("COPILOT_GITHUB_TOKEN");
-        Skip.If(string.IsNullOrWhiteSpace(apiKey), "MCL_API_KEY not set");
+        Skip.If(string.IsNullOrWhiteSpace(apiKey),       "MCL_API_KEY not set");
+        Skip.If(string.IsNullOrWhiteSpace(copilotToken), "COPILOT_GITHUB_TOKEN not set");
 
         var model    = Environment.GetEnvironmentVariable("MCL_MODEL") ?? "gpt-4o-mini";
         var runner   = BuildLiveRunner(apiKey!, model);
@@ -72,43 +73,45 @@ public sealed class CopilotSdkTests
         // Use a temp dir so the CLI subprocess ignores any cached keyring tokens
         var tmpHome = Path.Combine(Path.GetTempPath(), $"copilot-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tmpHome);
-
-        await using var copilot = new CopilotClient(new CopilotClientOptions
+        try
         {
-            GitHubToken   = copilotToken,
-            BaseDirectory = tmpHome,
-        });
-        await copilot.StartAsync();
+            await using var copilot = new CopilotClient(new CopilotClientOptions
+            {
+                GitHubToken   = copilotToken,
+                BaseDirectory = tmpHome,
+                Environment   = new Dictionary<string, string>
+                {
+                    ["COPILOT_PROVIDER_BASE_URL"] = $"{fixture.BaseUrl}/v1",
+                    ["COPILOT_PROVIDER_TYPE"]     = "openai",
+                    ["COPILOT_PROVIDER_API_KEY"]  = "forge",
+                    ["COPILOT_MODEL"]             = model,
+                },
+            });
+            await copilot.StartAsync();
 
-        var allContent = new ConcurrentBag<string>();
+            var allContent = new ConcurrentBag<string>();
 
-        await using var session = await copilot.CreateSessionAsync(new SessionConfig
+            await using var session = await copilot.CreateSessionAsync(new SessionConfig
+            {
+                OnPermissionRequest = PermissionHandler.ApproveAll,
+                OnEvent = evt =>
+                {
+                    if (evt is AssistantMessageEvent am && !string.IsNullOrEmpty(am.Data?.Content))
+                        allContent.Add(am.Data.Content);
+                },
+            });
+
+            await session.SendAndWaitAsync(
+                new MessageOptions { Prompt = "Say exactly: forge works" },
+                cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token);
+
+            var combined = string.Join("\n", allContent);
+            Assert.Contains("forge works", combined, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
         {
-            Provider = new ProviderConfig
-            {
-                Type    = "openai",
-                BaseUrl = $"{fixture.BaseUrl}/v1",
-                ApiKey  = "forge",
-                ModelId = "gpt-4o-mini",
-            },
-            OnPermissionRequest = PermissionHandler.ApproveAll,
-            OnEvent = evt =>
-            {
-                if (evt is AssistantMessageEvent am && !string.IsNullOrEmpty(am.Data?.Content))
-                    allContent.Add(am.Data.Content);
-            },
-        });
-
-        var reply = await session.SendAndWaitAsync(
-            new MessageOptions { Prompt = "Say exactly: forge works" },
-            cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token);
-
-        // Collect all assistant messages across the agent's turns
-        var combined = string.Join("\n", allContent);
-        Assert.True(
-            combined.Contains("forge works", StringComparison.OrdinalIgnoreCase)
-            || (reply?.Data?.Content?.Length > 0),
-            $"Expected non-empty response or 'forge works'. Got: {combined}. Final reply: {reply?.Data?.Content}");
+            Directory.Delete(tmpHome, recursive: true);
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -1,13 +1,11 @@
 version: 1
-sources:
-- ./experts
 experts:
   KubernetesArchitect:
-    source: ./experts
+    source: experts
     path: experts/KubernetesArchitect/expert.md
   PrincipalReviewer:
-    source: ./experts
+    source: experts
     path: experts/PrincipalReviewer/expert.md
   SecurityArchitect:
-    source: ./experts
+    source: experts
     path: experts/SecurityArchitect/expert.md

@@ -62,7 +62,10 @@ public class DirectExpertRunnerIntegrationTests
 
         var stepWriter = new StringWriter();
         var runner     = new PipelineRunner(new DirectExpertRunner(BuildChatClient()));
-        var options    = new PipelineRunOptions("TestMission", StepWriter: stepWriter);
+        var options    = new PipelineRunOptions(
+            "TestMission",
+            Vars: new Dictionary<string, string> { ["output"] = "The sky is blue because of Rayleigh scattering of sunlight." },
+            StepWriter: stepWriter);
 
         var result = await runner.RunAsync(ast, experts, options);
 
