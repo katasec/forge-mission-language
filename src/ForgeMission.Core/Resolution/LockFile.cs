@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -12,8 +13,9 @@ public class LockFile
 
 public class LockFileExpert
 {
-    public string Source { get; set; } = "";
-    public string Path   { get; set; } = "";
+    public string  Source { get; set; } = "";
+    public string  Path   { get; set; } = "";
+    public string? Hash   { get; set; }  // SHA256 of expert.md — null for legacy lock files
 }
 
 public static class LockFileIO
@@ -50,8 +52,15 @@ public static class LockFileIO
         foreach (var (name, expert) in catalog.OrderBy(k => k.Key))
         {
             var relativePath = Path.GetRelativePath(missionDirectory, expert.ExpertMdPath);
-            lf.Experts[name] = new LockFileExpert { Source = expert.Source, Path = relativePath };
+            var hash         = ComputeHash(expert.ExpertMdPath);
+            lf.Experts[name] = new LockFileExpert { Source = expert.Source, Path = relativePath, Hash = hash };
         }
         return lf;
+    }
+
+    public static string ComputeHash(string filePath)
+    {
+        var bytes = SHA256.HashData(File.ReadAllBytes(filePath));
+        return Convert.ToHexStringLower(bytes);
     }
 }

@@ -1,6 +1,6 @@
 # Phase 25 — Spoke 3: Expert Resolution
 
-## Status: Todo
+## Status: Done
 
 ## Resolution order
 

@@ -1,10 +1,10 @@
 version: 1
-sources:
-- ./experts
 experts:
   ContextOverloaded:
-    source: ./experts
+    source: experts
     path: experts/ContextOverloaded/expert.md
+    hash: 185a8258b9560b93853c2a48901276b42b12bede547ec80aa40a5635e6a2f158
   QualityJudge:
-    source: ./experts
+    source: experts
     path: experts/QualityJudge/expert.md
+    hash: c92d18035ed0834579c661f00020949a6cfc3d469e82eb0c899871b7ac2378f3

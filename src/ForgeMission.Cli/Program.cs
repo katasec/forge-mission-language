@@ -2,8 +2,8 @@ using System.CommandLine;
 using ForgeMission.Core.Adapters;
 using ForgeMission.Core.Experts;
 using ForgeMission.Core.Manifest;
-using ForgeMission.Parser;
 using ForgeMission.Core.Resolution;
+using ForgeMission.Parser;
 using ForgeMission.Core.Runtime;
 using static ForgeMission.Core.Runtime.MissionStatus;
 using Microsoft.Extensions.AI;
@@ -70,12 +70,8 @@ static Command BuildInitCommand()
             catch (MclException ex) { Die(ex.Message); return; }
         }
 
-        foreach (var (name, expert) in localCatalog.OrderBy(k => k.Key))
-        {
-            if (lockFile.Experts.ContainsKey(name)) continue; // OCI takes precedence if same name
-            var relativePath = Path.GetRelativePath(missionDir, expert.ExpertMdPath);
-            lockFile.Experts[name] = new LockFileExpert { Source = expert.Source, Path = relativePath };
-        }
+        // Build lock file with hashes from local catalog (OCI entries added when Spoke 4 lands)
+        lockFile = LockFileIO.Build(localCatalog, missionDir);
 
         // Report OCI experts declared in forge.toml (pulling is not yet implemented)
         if (manifest?.Experts.Count > 0)
@@ -106,9 +102,10 @@ static Command BuildInitCommand()
 
 static Command BuildRunCommand()
 {
-    var missionArg = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
-    var stepsOpt   = new Option<bool>("--steps") { Description = "Stream each expert's output to stderr as the pipeline runs" };
-    var varOpt     = new Option<string[]>("--var")
+    var missionArg  = new Argument<FileInfo?>("mission") { Description = "Path to the .mcl mission file (default: mission.mcl)", Arity = ArgumentArity.ZeroOrOne };
+    var stepsOpt    = new Option<bool>("--steps")   { Description = "Stream each expert's output to stderr as the pipeline runs" };
+    var verboseOpt  = new Option<bool>("--verbose") { Description = "Print expert resolution source for each step before running" };
+    var varOpt      = new Option<string[]>("--var")
     {
         Description = "Set a context variable as key=value (repeatable, overrides let bindings)",
         AllowMultipleArgumentsPerToken = false
@@ -118,12 +115,14 @@ static Command BuildRunCommand()
     var cmd = new Command("run", "Run a mission");
     cmd.Add(missionArg);
     cmd.Add(stepsOpt);
+    cmd.Add(verboseOpt);
     cmd.Add(varOpt);
 
     cmd.SetAction(async result =>
     {
         var mission    = ResolveMission(result.GetValue(missionArg));
         var showSteps  = result.GetValue(stepsOpt);
+        var verbose    = result.GetValue(verboseOpt);
         var vars       = result.GetValue(varOpt) ?? [];
         var missionDir = mission.DirectoryName!;
 
@@ -152,7 +151,7 @@ static Command BuildRunCommand()
         catch (Exception ex) { Die($"Cannot read mcl.lock: {ex.Message}"); return; }
 
         Dictionary<string, ExpertDefinition> expertDefs;
-        try { expertDefs = ExpertLoader.LoadFromLockFile(lockFile, missionDir); }
+        try { expertDefs = ExpertResolver.ResolveAll(lockFile, missionDir, verbose ? Console.Error : null); }
         catch (ExpertLoadException ex) { Die(ex.Message); return; }
 
         if (!TryValidate(ast, expertDefs)) return;
