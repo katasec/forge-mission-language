@@ -28,19 +28,23 @@ endpoint = "http://localhost:11434"
 ## Per-step override in `mission.mcl`
 
 ```fsharp
-mission BuildOperatorDesign(goal, persona) =
-    KubernetesArchitect with { provider = "architect" }
+mission BuildOperatorDesign(goal, persona) = {
+    KubernetesArchitect using architect
     -> SecurityArchitect
-    -> PrincipalReviewer with { style = "terse ADR" }
+    -> PrincipalReviewer(style: "terse ADR")
+    -> Synthesiser(format: "ADR") using architect
+}
 ```
 
-`with { provider = "architect" }` tells the runtime to look up the `architect` profile in `forge.toml` and use it for that step only. All other steps use `default`.
+`using architect` tells the runtime to look up the `architect` profile in `forge.toml` and use it for that step only. All other steps use `default`. `()` context is always domain — no reserved keys, no infrastructure meaning.
+
+`using` and `()` context are independent and composable — both, either, or neither may appear on a step.
 
 ## Resolution
 
 At step execution time:
 
-1. Check `with { }` clause for `provider` key
+1. Check for `using <profile>` clause on the step
 2. If present — look up named profile in `ForgeManifest.Providers`
 3. If absent — use `providers.default`
 4. Construct `IChatClient` from the resolved profile
@@ -55,7 +59,50 @@ At step execution time:
 | `azure` | `apiKey`, `model`, `endpoint` | `endpoint` is mandatory |
 | `ollama` | `model`, `endpoint` | No `apiKey` required |
 
-Unknown `provider` values are an error at startup — not at step execution time.
+Unknown `provider` values are an error at startup — not at step execution time. Third-party provider registration is a future extension point; Phase 25 supports built-in providers only.
+
+## Provider schema registry
+
+`ProviderSchemaRegistry` is a compile-time, AOT-safe dictionary in Core. It is the single source of truth for required/optional fields per provider. Consumed by:
+- `ForgeTomlReader` (Spoke 2) — validates required fields when parsing `forge.toml`
+- `forge provider scaffold` (this spoke) — generates ready-to-paste TOML blocks
+
+```csharp
+// AOT-safe: no reflection, no dynamic dispatch
+static class ProviderSchemaRegistry
+{
+    static readonly IReadOnlyDictionary<string, ProviderSchema> Known = ...
+}
+
+record ProviderSchema(string[] Required, string[] Optional, IReadOnlyDictionary<string, string> FieldDocs);
+```
+
+Validation errors are schema-aware:
+```
+error[C003]: provider profile 'default' is missing required field 'apiKey'
+  = provider 'openai' requires: model, apiKey
+  = help: add `apiKey = env("OPENAI_API_KEY")` to [providers.default] in forge.toml
+     or: run `forge provider scaffold openai` to regenerate the full block
+```
+
+## Discoverability commands
+
+`forge provider list` — prints all known providers and their purpose. Directs user to `forge provider scaffold` for setup.
+
+`forge provider scaffold <name>` — prints a ready-to-paste TOML block with inline field comments. `--write` patches `forge.toml` directly without overwriting existing profiles.
+
+```
+forge provider scaffold openai
+```
+```toml
+[providers.default]
+provider = "openai"
+model    = "gpt-4o-mini"         # or: gpt-4o, gpt-4-turbo
+apiKey   = env("OPENAI_API_KEY") # set this env var before running
+# endpoint = "..."               # optional — omit for default OpenAI endpoint
+```
+
+These are the primary discoverability path — users should not need docs to configure a known provider.
 
 ## What changes from current behaviour
 

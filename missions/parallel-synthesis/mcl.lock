@@ -1,0 +1,14 @@
+version: 1
+experts:
+  BusinessAnalyst:
+    source: ./experts
+    path: experts/BusinessAnalyst/expert.md
+  TechnicalReviewer:
+    source: ./experts
+    path: experts/TechnicalReviewer/expert.md
+  RiskAnalyst:
+    source: ./experts
+    path: experts/RiskAnalyst/expert.md
+  Synthesiser:
+    source: ./experts
+    path: experts/Synthesiser/expert.md

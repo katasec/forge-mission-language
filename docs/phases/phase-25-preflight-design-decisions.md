@@ -18,7 +18,7 @@ MoE routing) to each decision below. Read it before the discussion session.
 
 ## 1. Error message design
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 Error message quality is a first-class language concern. Every failure mode should
@@ -31,13 +31,28 @@ deliberate design pass before implementation, not a retrofit after.
 - Should errors include a link to docs or an error code for lookup?
 
 **Decision:**
-_To be recorded._
+
+- **Error codes:** Phase-prefixed — `P` (parse), `R` (resolve), `X` (execute), `C` (config/CLI).
+- **Doc links:** No URLs in the binary. Error codes are stable; URLs rot. `forge explain <code>` is the future lookup path (deferred — not Phase 25 scope).
+- **Source positions:** Emit good messages now using phase + expert name as the anchor. Source positions (file, line, col) are a Phase 26 prerequisite — see note added to Phase 26 Spoke 1. Format is designed to accept them without shape change.
+- **`help:` line:** Mandatory on every error. No error ships without a specific next action.
+- **Format:** Rust-inspired. Structured `MclError` record (not string) carries: code, message, nullable `MclErrorLocation` (null until Phase 26), `Notes[]`, and `Help` (required). CLI renderer owns Spectre.Console — Core never calls Spectre. TTY detection and `NO_COLOR` support handled by Spectre automatically.
+- **Color:** Spectre.Console (already in project from Phase 23). AOT-safe. Degrades to plain text when piped or `NO_COLOR=1`.
+
+Example shape:
+```
+error[R002]: expert 'SecurityArchitect' not found
+  = searched: ./experts/SecurityArchitect/expert.md
+  = searched: ~/.forge/experts/SecurityArchitect/
+  = help: run `forge init` to pull missing experts, or create ./experts/SecurityArchitect/expert.md
+```
+Phase 26 adds the line underline and caret — same `MclError` record, renderer upgraded.
 
 ---
 
 ## 2. File versioning / backwards compatibility
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 Grammar changes in future phases will break mission files written today unless
@@ -59,13 +74,26 @@ mission BuildOperatorDesign(goal) =
 - Does `forge.toml` also need a version declaration?
 
 **Decision:**
-_To be recorded._
+
+- **Version location:** `forge.toml`, not `.mcl` files. Source files are version-agnostic — this is the TypeScript/C# pattern. `tsconfig.json` carries language settings; individual `.ts` files do not. `.mcl` files follow the same principle.
+- **Version scheme:** Semver, Go-style — `mcl = "1.0"` (major.minor, no patch component). One declaration in `forge.toml` covers both the grammar version and the `forge.toml` schema version — they are coupled and evolve together. The compiler carries the burden of knowing what each version means for every file format it touches. Minor bump (`1.0` → `1.1`) for additive grammar features; major bump (`1.0` → `2.0`) for breaking changes only. Patch component unused for grammar — patch versions are forge binary releases. This is the Type 2 (reversible) choice: integer forecloses semver later; semver does not foreclose simplification.
+- **On mismatch:** Hard error, direction-aware, with specific next action per Decision 1 format:
+  - File ahead of forge (`mcl = 2`, forge knows `mcl 1`): `help: upgrade forge — run brew upgrade forge`
+  - File behind forge (`mcl = 1`, forge knows `mcl 2`): `help: run forge migrate to update your mission files to mcl 2`
+- **`forge migrate`:** The resolution path for files behind forge. Auto-upgrades `.mcl` syntax between versions. Analogous to `go fix`. `forge init` writes the version; `forge migrate` updates it. Users never manually increment.
+- **Backwards compatibility commitment (Anders Hejlsberg lens):** Additive grammar changes are always backwards compatible and never require a version bump. Version bumps only happen when syntax is removed or renamed. Breaking changes are defined narrowly — removal or rename only. The goal is for `forge migrate` to be a rarely-invoked emergency tool, not a routine upgrade path. Every use of it is an admission of a breaking change. **This commitment activates at `mcl = 1` public release.** Pre-1.0 grammar iteration (e.g. `|>` → `->`) is unconstrained — there is no external code to break.
+- **`forge.toml` cognitive overhead:** Eliminated by the single-integer rule. One number, declared once, managed by tooling. Users never think about two separate version numbers.
+
+```toml
+# forge.toml
+mcl = 1   # grammar version and manifest schema version — one number covers both
+```
 
 ---
 
 ## 3. Parallel failure model
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 Sequential fail-fast is clear — any step failure stops the pipeline. Parallel
@@ -84,13 +112,23 @@ and runtime for parallel execution are written.
 - How does a downstream step know which parallel experts failed?
 
 **Decision:**
-_To be recorded._
+
+- **Model: A — fail the whole block.** If any expert in a `parallel {}` block fails, cancel all in-flight experts immediately via context propagation and stop the pipeline. Consistent with sequential fail-fast everywhere else. Either the parallel discussion happened or it didn't — there is no partial result worth synthesising.
+- **Configurability: deferred indefinitely.** Best-effort and configurable modes are not added until a concrete use case appears that fail-fast cannot serve. Complexity can always be added later; it cannot be removed. (Rob Pike / Go `errgroup` rationale.)
+- **Cancellation: immediate.** In-flight experts are cancelled via context the moment any peer fails. No point consuming tokens on results that will be discarded.
+- **Downstream visibility:** the error names what failed and why. The succeeded list is `--verbose` only — the user's job is to fix the failure, not receive a consolation prize list.
+
+```
+error[X004]: parallel block failed — FactChecker returned status: fail
+  = "source document contained no verifiable claims"
+  = help: fix FactChecker or remove it from the parallel block
+```
 
 ---
 
 ## 4. Context accumulation
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 Each expert receives all prior output via `{{output}}`. In a long pipeline this
@@ -103,13 +141,26 @@ failure mode unique to this domain that no traditional language has to handle.
 - If deferred, should it be formally documented as a known gap in `language.md`?
 
 **Decision:**
-_To be recorded._
+
+- **Language concern, not a runtime concern.** The runtime never invisibly truncates or summarises context. Hidden magic produces non-reproducible results — the same pipeline runs differently depending on what the runtime decided to cut. (Rob Pike rationale: identical to rejecting auto-parallelism inference.)
+- **No new language primitive.** A `ContextSummariser` expert is sufficient forever. The author inserts it explicitly when they care about context pressure. This is a known pattern, not a gap.
+- **Documented as a known pattern** in `docs/design/stdlib.md` — not a gap. The distinction matters: a gap implies something missing from the language; a pattern implies deliberate design. The language gives you the right tool — an expert.
+- **`ContextSummariser` is a standard library expert.** It passes all four stdlib gates (see `docs/design/stdlib.md`) and ships embedded in the forge binary. No declaration needed in `forge.toml`.
+- **Hard error on overflow** per Decision 1 — the safety net when no `ContextSummariser` is present:
+
+```
+error[X005]: context window exceeded at step 5 (Critic)
+  = accumulated context: ~130 000 tokens (model limit: 128 000)
+  = help: add a ContextSummariser step before Critic in your pipeline
+```
+
+**Standard library definition** formalised in this decision: see `docs/design/stdlib.md` for the four gates that govern all future stdlib inclusion decisions.
 
 ---
 
 ## 5. `with { provider }` ambiguity
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 `provider` is both a reserved profile key (infrastructure) and a valid camelCase
@@ -133,13 +184,30 @@ One candidate fix — separate keyword for profile selection:
 - Does this change affect the grammar in Spoke 1?
 
 **Decision:**
-_To be recorded._
+
+- **`using <identifier>` is the per-step profile selector.** `with {}` becomes purely domain context — no reserved keys, no ambiguity. The two constructs are orthogonal and fully composable.
+- **Identifier, not string literal.** Profile names are name references, not string values. `using architect` reads naturally; `using "architect"` treats a name like data.
+- **`with {}` is clean from this point forward.** Any key inside `with {}` is a domain variable. No parser special-casing, no reserved key list to maintain.
+- **Grammar change belongs in Phase 25 Spoke 1** — one new optional production on `step`:
+
+```antlr
+step        : UPPER_ID usingClause? withClause? ;
+usingClause : 'using' LOWER_ID ;
+```
+
+Usage:
+```fsharp
+-> SecurityArchitect using architect with { style = "terse ADR" }  ← profile + domain context
+-> SecurityArchitect using architect                                ← profile override only
+-> SecurityArchitect with { style = "terse ADR" }                  ← domain context, default profile
+-> SecurityArchitect                                                ← default profile, no context
+```
 
 ---
 
 ## 6. Mission metadata
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 Expert markdown has structured frontmatter declaring `input` and `output`.
@@ -153,7 +221,18 @@ completion for mission parameters.
 - Is this urgent for Phase 25 or deferred to a later phase?
 
 **Decision:**
-_To be recorded._
+
+- **Deferred to Phase 26.** Mission parameter names are sufficient for everything Phase 25 needs — CLI invocation, `forge serve` endpoints, and LSP parameter completion. The gap only becomes blocking when mission-to-mission composition arrives.
+- **Asymmetry with expert.md is intentional, not accidental.** Expert frontmatter is load-bearing interface specification — the resolver needs it to wire steps. Mission parameters are entry-point arguments — the CLI handles them by name. Different roles, different needs.
+- **Intended design when added:** inline parameter annotations in `mission.mcl` — descriptions on the names themselves, no third file, additive minor grammar bump:
+
+```fsharp
+mission BuildOperatorDesign(goal: "the design objective", persona: "the intended audience") =
+    ...
+```
+
+- **Not a separate `mission.md` file.** Experts are markdown because their content *is* a system prompt. Missions are code — a companion `.md` is unnatural and would introduce a third file per mission directory.
+- **Phase 26 scope note:** add inline parameter annotations alongside source positions. Both are additive grammar changes; they arrive together as a planned extension.
 
 ---
 
@@ -220,7 +299,7 @@ _To be recorded._
 
 ## 8. Conditional steps — `when { }` primitive
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 The classifier-router pattern (see [`docs/design/interaction-modes.md`](../design/interaction-modes.md)) requires steps that execute conditionally based on a context bag value set by a prior step:
@@ -239,7 +318,41 @@ This is a new language primitive not currently in the grammar. It is the minimal
 - Should an unmatched `when { }` step silently skip or emit a trace log entry?
 
 **Decision:**
-_To be recorded._
+
+- **Phase 25 — not a separate phase.** `when {}` is load-bearing for the `Classifier` stdlib expert and for `forge serve` interaction modes. It ships in Spoke 1 as a grammar change.
+- **Exact string match only for Phase 25.** Richer expressions (`>`, `or`, `contains`) are deferred until the typed context bag arrives in Phase 22. Rushing expressions against a stringly-typed bag is dishonest — `priority > 5` where `priority = "7"` is string comparison dressed as numeric. The grammar is designed to be extensible: new expression types are additive `WhenExpression` subclasses, minor version bump, no existing syntax touched.
+- **Plain context bag key.** `Classifier` writes a value into the context bag; `when {}` reads it. One mechanism, no special cases. Same path as every other expert-to-expert handoff.
+- **Silent skip + `--verbose` trace per unmatched step.** Unmatched is the expected case in routing — only one branch fires by design.
+- **`when { else }` is the explicit default branch.** Without it, an unmatched classifier is a silent hole. Hard error if no step matches and no `when { else }` is present:
+
+```
+error[X006]: no step matched for classifier output
+  = Classifier returned: mode = "unknown"
+  = guards checked: "design", "task", "review"
+  = help: add `-> Fallback when { else }` to handle unmatched cases
+```
+
+**Grammar:**
+```antlr
+step       : UPPER_ID usingClause? whenClause? withClause? ;
+whenClause : 'when' '{' whenExpr '}' ;
+whenExpr   : LOWER_ID '=' STRING   # StringEquals
+           | 'else'                # Else
+           ;
+```
+
+**Implementation constraint — typed context bag seam (non-negotiable):**
+The context bag must ship as `Dictionary<string, ContextValue>` where `ContextValue` is a wrapper record — not `Dictionary<string, string>`. This is the one-hour design choice that keeps the typed context bag pivot clean. When Phase 22 arrives, `ContextValue` expands to a discriminated union internally; no call sites change. Concreting `string` across the codebase now forecloses strong typing permanently.
+
+```csharp
+record ContextValue(string Raw);           // Phase 25
+// Future — internal expansion only:
+// abstract record ContextValue;
+// record StringValue(string Raw) : ContextValue;
+// record IntValue(int Value) : ContextValue;
+```
+
+`with {}` bindings and `let` bindings follow the same `ContextValue` wrapper — the typed context bag is a language-wide non-negotiable, not a context-bag-only concern. LLM expert outputs remain text at the LLM level; the runtime coerces to typed values via structured `StepEnvelope` output (the pattern already established for `status` and `reason`).
 
 ---
 
@@ -247,7 +360,7 @@ _To be recorded._
 
 ## 9. Loop context — deterministic convergence vs random retry
 
-**Status: Open**
+**Status: Resolved**
 
 **Context:**
 The current `loop N` implementation almost certainly resets context at the start of each iteration — each attempt runs with the same original input, with no memory of what failed or why. This makes looping random retry, not iterative improvement:
@@ -294,7 +407,118 @@ The Judge's failure reason already exists in `StepEnvelope` — the runtime chan
 - Is this a Phase 25 runtime change or a separate phase?
 
 **Decision:**
-_To be recorded._
+
+- **`loop N` is replaced by `loop(N)`.** The judge is the last step in the pipeline — visible, explicit, not hidden in a parameter. The runtime loops until the last step returns `status: pass` or N attempts are exhausted. Any expert can be the judge; the loop doesn't care about the name, only the `StepEnvelope` status.
+
+- **`{{feedback}}` is removed as a public developer API.** The platform manages feedback injection automatically — the developer declares `loop(N)`, the runtime handles convergence. No prompt engineering required.
+
+- **Feedback injection: first expert only, automatic, structured.** The runtime prepends a structured critique to the first expert's context on each retry. Structured per Constitutional AI model (criterion, reason, suggestion) — not a raw failure string. No `feedback_target` parameter — platform decides, always first expert. The research confirms this is the most effective injection point.
+
+- **Two distinct primitives — different topologies, different use cases:**
+
+| Primitive | Shape | Research backing | Phase |
+|---|---|---|---|
+| `loop(N)` | Sequential convergence — full pipeline reruns with feedback | Self-Refine, Reflexion | Phase 25 |
+| `debate(rounds: N) { }` | Parallel exploration — agents cross-critique for N rounds, synthesiser follows | Multi-Agent Debate, MoA | Separate phase |
+
+- **Research-backed defaults:** `loop(2)` or `loop(3)` — 2-3 attempts is the sweet spot. `debate(rounds: 3)` — diminishing returns and degradation beyond round 5. Runtime warns if `rounds > 5`.
+
+- **2 × 3 beats 6 flat rounds.** The retry reset gives agents fresh diversity; the judge's structured signal breaks plateau that peer critique cannot. `loop` and `debate` solve different failure modes and are composable:
+
+```fsharp
+mission DeepReview(input) loop(2) = {
+    debate(rounds: 3) {
+        SecurityExpert
+        ArchitectExpert
+        CriticalReviewer
+    }
+    -> Synthesiser
+    -> QualityJudge
+}
+```
+
+- **`debate` deferred to a separate phase** — requires round orchestration, per-round context summarisation, and cross-agent output wiring. Not Phase 25 scope.
+
+---
+
+## 10. Syntax consolidation
+
+**Status: Resolved** *(emerged during Decision 8 and 9 discussion)*
+
+Several syntax decisions were made that constitute a breaking change from prior phases. Pre-1.0, no migration required.
+
+- **`with { key = value }` → `(key: value)`.** Named parameters with `:`. The `with` keyword is removed. Domain context is passed directly on the step using the same `(key: value)` syntax as execution config.
+- **`when { key = value }` → `when(key: value)`.** Guard conditions use the same named parameter pattern.
+- **`when { else }` → `when(else)`.** `else` is a keyword value inside the guard.
+- **Braces everywhere.** Mission body uses `= { }`. Every scope has an explicit open and close. Not whitespace-sensitive. Rob Pike argued for this on consistency grounds; Anders Hejlsberg's counter (the `=` is semantically "is defined as") was considered but consistency wins at this stage of the language.
+- **`:` is the universal named parameter separator.** Used in step context `(source: codebase)`, execution config `debate(rounds: 3)`, and guard conditions `when(mode: "design")`.
+
+Full syntax reference:
+
+```fsharp
+mission SecurityAudit(codebase) loop(2) = {
+    DataExtractor(source: codebase)
+    -> debate(rounds: 3) {
+        SecurityExpert using architect
+        ArchitectExpert
+        CriticalReviewer
+    }
+    -> Synthesiser
+    -> QualityJudge
+}
+
+mission HandleRequest(input) = {
+    Classifier
+    -> Architect when(mode: "design")
+    -> Developer when(mode: "task")
+    -> Fallback  when(else)
+}
+```
+
+---
+
+## 11. Mission composition
+
+**Status: Resolved** *(emerged during pre-flight discussion)*
+
+**Core principle:** a mission and an expert are identical at the interface level. Both take input, both produce output. The caller never knows or cares which it is. The difference is internal structure only.
+
+- **Missions are usable as steps in other missions.** Same syntax — no new keyword.
+- **Explicit parameter binding.** Parameters are bound at the call site: `CodeReview(codebase: goal)`. Context inheritance (inner mission sees outer context bag) is rejected — leaky, implicit, harder to reason about.
+- **Resolution order gains a new tier:**
+
+```
+1. ./experts/<Name>/expert.md    ← leaf: single LLM call
+2. ./missions/<Name>.mcl         ← composite: sub-pipeline
+3. ~/.forge/cache/<Name>/        ← OCI (expert or mission)
+4. forge stdlib                  ← built-in experts only
+5. error[R002]: not found
+```
+
+- **`forge.toml` declares missions under `[experts]`** — from the caller's perspective, it is an expert. No separate `[missions]` section.
+- **OCI can publish missions.** A published mission is a reusable reasoning component, same artifact format as an expert.
+- **Composition is arbitrarily deep.** Small missions compose into larger missions. The tree has no depth limit.
+
+```fsharp
+mission CodeReview(codebase) loop(2) = {
+    Analyser
+    -> SecurityChecker
+    -> Synthesiser
+    -> QualityJudge
+}
+
+mission FullDevelopmentCycle(goal) = {
+    RequirementsAnalyst
+    -> CodeReview(codebase: goal)       ← mission as step, explicit binding
+    -> DeploymentPlanner
+}
+
+mission QuarterlyRelease(objectives) = {
+    Planner
+    -> FullDevelopmentCycle(goal: objectives)   ← two levels deep
+    -> ReleaseNotesWriter
+}
+```
 
 ---
 

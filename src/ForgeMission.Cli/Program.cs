@@ -54,60 +54,8 @@ static Command BuildInitCommand()
 
         Console.WriteLine("Resolving experts...\n");
 
-        // --- OCI experts: pull to ~/.forge/experts/<registry>/<name>/<version>/expert.md
-        var ociDecls = ast.Declarations.OfType<ExpertDeclaration>()
-            .Where(e => e.Source is not null)
-            .ToList();
-
+        // OCI expert declarations have moved to forge.toml — Spoke 2 will re-implement OCI pulling.
         var lockFile = new LockFile();
-
-        foreach (var decl in ociDecls)
-        {
-            var src      = decl.Source!;
-            var slash    = src.Registry.IndexOf('/');
-            var registry = slash >= 0 ? src.Registry[..slash] : src.Registry;
-            var ociName  = slash >= 0 ? src.Registry[(slash + 1)..] : src.Registry;
-            var cachePath = ForgeCache.ExpertMdPath(registry, ociName, src.Version);
-
-            if (File.Exists(cachePath) && !refresh)
-            {
-                Console.WriteLine($"  ✓ {decl.Name}  (cached)");
-            }
-            else
-            {
-                Console.Write($"  ↓ {decl.Name}  ({src.Registry}:{src.Version}) ... ");
-                try
-                {
-                    var token = CredentialStore.GetToken(registry);
-                    using var client = new OciClient(token);
-                    var content = await client.PullExpertAsync(registry, ociName, src.Version);
-                    Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
-                    await File.WriteAllTextAsync(cachePath, content);
-                    Console.WriteLine("done");
-                }
-                catch (OciAuthException ex)
-                {
-                    Console.WriteLine();
-                    Die($"MCL011 Authentication failed pulling {decl.Name}: {ex.Message}\n\nRun: forge login {registry} --token <token>");
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine();
-                    Die($"MCL011 Failed to pull {decl.Name} from {src.Registry}:{src.Version}: {ex.Message}");
-                    return;
-                }
-            }
-
-            // Store path as ~/.forge/... so the lock file is portable across machines
-            var home         = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var portablePath = "~" + cachePath[home.Length..].Replace(Path.DirectorySeparatorChar, '/');
-            lockFile.Experts[decl.Name] = new LockFileExpert
-            {
-                Source = $"{src.Registry}:{src.Version}",
-                Path   = portablePath
-            };
-        }
 
         // --- Local experts: discover from ./experts
         var localCatalog = new Dictionary<string, ResolvedExpert>(StringComparer.Ordinal);
@@ -182,20 +130,7 @@ static Command BuildRunCommand()
         var ast = TryParse(source);
         if (ast is null) return;
 
-        // Pass 2: assert OCI experts exist in ~/.forge/experts cache
-        foreach (var decl in ast.Declarations.OfType<ExpertDeclaration>().Where(e => e.Source is not null))
-        {
-            var src      = decl.Source!;
-            var slash    = src.Registry.IndexOf('/');
-            var registry = slash >= 0 ? src.Registry[..slash] : src.Registry;
-            var ociName  = slash >= 0 ? src.Registry[(slash + 1)..] : src.Registry;
-            var cachePath = ForgeCache.ExpertMdPath(registry, ociName, src.Version);
-            if (!File.Exists(cachePath))
-            {
-                Die($"MCL010 Expert '{decl.Name}' not resolved — run 'forge init' to pull remote experts");
-                return;
-            }
-        }
+        // OCI expert validation moved to forge.toml (Spoke 2).
 
         LockFile lockFile;
         try { lockFile = LockFileIO.Read(lockPath); }
@@ -447,19 +382,7 @@ static Command BuildServeCommand()
         var ast = TryParse(source);
         if (ast is null) return;
 
-        // Pass 2: assert OCI experts are cached
-        foreach (var decl in ast.Declarations.OfType<ExpertDeclaration>().Where(e => e.Source is not null))
-        {
-            var src      = decl.Source!;
-            var slash    = src.Registry.IndexOf('/');
-            var registry = slash >= 0 ? src.Registry[..slash] : src.Registry;
-            var ociName  = slash >= 0 ? src.Registry[(slash + 1)..] : src.Registry;
-            if (!File.Exists(ForgeCache.ExpertMdPath(registry, ociName, src.Version)))
-            {
-                Die($"MCL010 Expert '{decl.Name}' not resolved — run 'forge init' first.");
-                return;
-            }
-        }
+        // OCI expert validation moved to forge.toml (Spoke 2).
 
         LockFile lockFile;
         try { lockFile = LockFileIO.Read(lockPath); }

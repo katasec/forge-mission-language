@@ -12,7 +12,8 @@ let model    = env("MCL_MODEL", "gpt-4o-mini")
 let goal     = "Design a production-grade K8s build operator"
 let persona  = "Principal SRE, Tekton specialist"
 
-mission BuildOperatorDesign(goal, persona) =
+mission BuildOperatorDesign(goal, persona) = {
     KubernetesArchitect             // drafts CRDs, controller structure, RBAC
-    |> SecurityArchitect            // hardens the design
-    |> PrincipalReviewer with { style = "terse ADR" }  // final sign-off as a terse ADR
+    -> SecurityArchitect            // hardens the design
+    -> PrincipalReviewer(style: "terse ADR")  // final sign-off as a terse ADR
+}

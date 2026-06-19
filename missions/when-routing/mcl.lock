@@ -1,0 +1,17 @@
+version: 1
+experts:
+  RequestClassifier:
+    source: ./experts
+    path: experts/RequestClassifier/expert.md
+  ArchitectureAdvisor:
+    source: ./experts
+    path: experts/ArchitectureAdvisor/expert.md
+  CodeAdvisor:
+    source: ./experts
+    path: experts/CodeAdvisor/expert.md
+  OperationsAdvisor:
+    source: ./experts
+    path: experts/OperationsAdvisor/expert.md
+  GeneralAdvisor:
+    source: ./experts
+    path: experts/GeneralAdvisor/expert.md

@@ -29,7 +29,7 @@
 | [Phase 22 — Non-LLM Expert Kinds](phases/phase-22-non-llm-experts.md) | `kind` field in expert frontmatter (`llm` default, `onnx`, `http`). Static runner dispatch, no reflection. Context bag gains typed numeric values. Motivated by log anomaly detection (UC-3). | Design |
 | [Phase 23 — Container Commands](phases/phase-23-container-commands.md) | `forge agent start/stop` and `forge webui start/stop` — run agent and Open WebUI in Docker; shared prereq checker with Spectre.Console TUI; Process.Start docker CLI (AOT-safe). Hub + 4 spokes. | Done |
 | [Phase 24 — Copilot SDK Integration Tests](phases/phase-24-copilot-sdk-integration-tests.md) | Prove real AI coding agents (GitHub Copilot SDK, then Claude Code CLI) drive through an MCL mission end-to-end. OaiServer on a random port; BYOK points the agent at forge. Hub + 3 spokes. | Spoke 1+2 Done |
-| [Phase 25 Pre-flight — Open Design Decisions](phases/phase-25-preflight-design-decisions.md) | Six design questions must be resolved before Phase 25 implementation begins: error message design, versioning, parallel failure model, context accumulation, `with { provider }` ambiguity, mission metadata. Blocking gate for Phase 25. | Next |
+| [Phase 25 Pre-flight — Open Design Decisions](phases/phase-25-preflight-design-decisions.md) | Eleven design decisions resolved: error messages, versioning, parallel failure, context accumulation, provider ambiguity, mission metadata, Hejlsberg/Pike review, `when()` conditional, loop convergence, syntax consolidation, mission composition. Blocking gate for Phase 25. | Next |
 | [Phase 25 — Language & Manifest Evolution](phases/phase-25-language-manifest-evolution.md) | `->` operator, `parallel {}` block, `forge.toml` manifest, expert resolution (local-first), provider profiles. Two-file model: `mission.mcl` + `forge.toml`. Hub + 6 spokes. | Blocked on Pre-flight |
 | [Phase 26 — Tooling Foundation](phases/phase-26-tooling-foundation.md) | Source positions on AST nodes, TextMate grammar (syntax highlighting), Tree-sitter grammar (incremental parsing), LSP server (completion, hover, go-to-definition). After grammar stabilises in Phase 25. Hub + 4 spokes. | Todo |
 
@@ -37,15 +37,19 @@
 
 | Topic | Description |
 |-------|-------------|
+| Mission Composition | Missions usable as steps in other missions — explicit parameter binding, resolution order update, OCI mission publishing. Design decided in pre-flight Decision 11; needs a dedicated implementation phase. |
+| Multi-Agent Debate (`debate {}` block) | Round orchestration, per-round context summarisation, cross-agent output wiring. Deferred from Phase 25; needs a dedicated phase. Research-backed default: rounds: 3, warn beyond 5. |
 | Skills and Tools | Review hub/spoke architecture for expert-level tool-calling support (function calls, MCP tools, shell commands). Decide scope, grammar extension, and AOT-safe dispatch before committing to an implementation phase. |
 | Parallel steps runtime model | Decide whether parallel steps use Task.WhenAll (simple) or a channel-based streaming approach (better for token streaming). Consider cancellation on first failure. |
 | Context bag typing | Currently all values are strings. Typed values (float, bool, byte[]) needed for non-LLM stages. Decide schema: loose dictionary with type tags vs. strongly-typed envelope. |
+| Language governance process | Java uses JSRs, C# uses Language Design Meeting notes, Go uses a formal proposal process (golang/proposal). Key design decisions are currently recorded in ad-hoc markdown files. A standardised proposal format — problem, prior art, alternatives considered, decision, rationale — would make decisions traceable and give future contributors clear reasoning rather than just outcomes. Decide format, location (`docs/proposals/`?), and whether past decisions (Phase 25 pre-flight) are backfilled. |
 
 ## Design docs
 
 | Doc | Description |
 |-----|-------------|
 | [Language Design](design/language.md) | Grammar, syntax decisions, primitives, capitalisation rationale |
+| [Standard Library](design/stdlib.md) | Definition of what qualifies as a stdlib expert — four gates, current members, worked examples |
 | [Architecture](design/architecture.md) | Components, boundaries, dependency flow |
 | [Interaction Modes & Classifier-Router Pattern](design/interaction-modes.md) | Human-AI collaboration modes, classifier as HAProxy, SDLC meta-mission, `when {}` conditional step primitive |
 | [Research Foundations](design/research.md) | Academic literature mapped to MCL design decisions — Self-Refine, Reflexion, Multi-Agent Debate, Constitutional AI, MoE routing, MoA |

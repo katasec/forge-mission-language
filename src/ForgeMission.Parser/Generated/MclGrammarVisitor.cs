@@ -39,12 +39,6 @@ public interface IMclGrammarVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitProgram([NotNull] MclGrammarParser.ProgramContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="MclGrammarParser.useDecl"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitUseDecl([NotNull] MclGrammarParser.UseDeclContext context);
-	/// <summary>
 	/// Visit a parse tree produced by <see cref="MclGrammarParser.letBinding"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -75,18 +69,6 @@ public interface IMclGrammarVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitLoopClause([NotNull] MclGrammarParser.LoopClauseContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="MclGrammarParser.expert"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitExpert([NotNull] MclGrammarParser.ExpertContext context);
-	/// <summary>
-	/// Visit a parse tree produced by <see cref="MclGrammarParser.ociSource"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitOciSource([NotNull] MclGrammarParser.OciSourceContext context);
-	/// <summary>
 	/// Visit a parse tree produced by <see cref="MclGrammarParser.params"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -99,23 +81,67 @@ public interface IMclGrammarVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitPipeline([NotNull] MclGrammarParser.PipelineContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.pipelineElement"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitPipelineElement([NotNull] MclGrammarParser.PipelineElementContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="MclGrammarParser.step"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitStep([NotNull] MclGrammarParser.StepContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="MclGrammarParser.withClause"/>.
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.contextClause"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitWithClause([NotNull] MclGrammarParser.WithClauseContext context);
+	Result VisitContextClause([NotNull] MclGrammarParser.ContextClauseContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.usingClause"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitUsingClause([NotNull] MclGrammarParser.UsingClauseContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.whenClause"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitWhenClause([NotNull] MclGrammarParser.WhenClauseContext context);
+	/// <summary>
+	/// Visit a parse tree produced by the <c>StringEquals</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitStringEquals([NotNull] MclGrammarParser.StringEqualsContext context);
+	/// <summary>
+	/// Visit a parse tree produced by the <c>ElseExpr</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitElseExpr([NotNull] MclGrammarParser.ElseExprContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.parallelBlock"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitParallelBlock([NotNull] MclGrammarParser.ParallelBlockContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="MclGrammarParser.binding"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitBinding([NotNull] MclGrammarParser.BindingContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MclGrammarParser.anyKey"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitAnyKey([NotNull] MclGrammarParser.AnyKeyContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="MclGrammarParser.value"/>.
 	/// </summary>

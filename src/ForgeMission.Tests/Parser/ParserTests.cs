@@ -4,25 +4,29 @@ namespace ForgeMission.Tests.Parser;
 
 public class ParserTests
 {
+    // ── Basic mission parsing ─────────────────────────────────────────────────
+
     [Fact]
     public void ValidMission_SingleExpert_ParsesCorrectly()
     {
-        var result = MclParser.Parse("mission BuildOperator = KubernetesArchitect");
+        var result = MclParser.Parse("mission BuildOperator = { KubernetesArchitect }");
 
         var mission = Assert.Single(result.Declarations) as MissionDeclaration;
         Assert.NotNull(mission);
         Assert.Equal("BuildOperator", mission.Name);
-        Assert.Equal(["KubernetesArchitect"], mission.Pipeline.Steps.Select(s => s.ExpertName));
+        var names = mission.Pipeline.Elements.OfType<StepElement>().Select(e => e.Step.ExpertName);
+        Assert.Equal(["KubernetesArchitect"], names);
     }
 
     [Fact]
     public void ValidMission_MultiStepPipeline_ParsesCorrectly()
     {
         var source = """
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
-                |> PrincipalReviewer
+                -> SecurityArchitect
+                -> PrincipalReviewer
+            }
             """;
 
         var result = MclParser.Parse(source);
@@ -32,106 +36,276 @@ public class ParserTests
         Assert.Equal("BuildOperator", mission.Name);
         Assert.Equal(
             ["KubernetesArchitect", "SecurityArchitect", "PrincipalReviewer"],
-            mission.Pipeline.Steps.Select(s => s.ExpertName));
+            mission.Pipeline.Elements.OfType<StepElement>().Select(e => e.Step.ExpertName));
     }
 
-    [Fact]
-    public void ValidExpert_ParsesCorrectly()
-    {
-        var source = """
-            expert KubernetesArchitect =
-                RequirementsAnalyst
-                |> PlatformArchitect
-                |> ReliabilityArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        var expert = Assert.Single(result.Declarations) as ExpertDeclaration;
-        Assert.NotNull(expert);
-        Assert.Equal("KubernetesArchitect", expert.Name);
-        Assert.Equal(
-            ["RequirementsAnalyst", "PlatformArchitect", "ReliabilityArchitect"],
-            expert.Pipeline.Steps.Select(s => s.ExpertName));
-    }
+    // ── expert keyword is removed ─────────────────────────────────────────────
 
     [Fact]
-    public void RecursiveExpert_ReferencingOtherExperts_ParsesCorrectly()
+    public void ExpertKeyword_IsParseError()
     {
-        var source = """
-            expert KubernetesArchitect =
-                RequirementsAnalyst
-                |> PlatformArchitect
-
-            mission BuildOperator =
-                KubernetesArchitect
-                |> SecurityArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        Assert.Equal(2, result.Declarations.Count);
-        Assert.IsType<ExpertDeclaration>(result.Declarations[0]);
-        Assert.IsType<MissionDeclaration>(result.Declarations[1]);
-    }
-
-    [Fact]
-    public void MissionAndExpert_InSameFile_ParsesCorrectly()
-    {
-        var source = """
-            mission BuildOperator =
-                KubernetesArchitect
-                |> SecurityArchitect
-                |> PrincipalReviewer
-
-            expert KubernetesArchitect =
-                RequirementsAnalyst
-                |> PlatformArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        Assert.Equal(2, result.Declarations.Count);
-        var mission = result.Declarations[0] as MissionDeclaration;
-        var expert = result.Declarations[1] as ExpertDeclaration;
-        Assert.NotNull(mission);
-        Assert.NotNull(expert);
-        Assert.Equal("BuildOperator", mission.Name);
-        Assert.Equal("KubernetesArchitect", expert.Name);
-    }
-
-    [Fact]
-    public void LowercaseIdentifier_ThrowsParseException()
-    {
-        var source = "mission BuildOperator = kubernetesArchitect";
-
-        var ex = Assert.Throws<ParseException>(() => MclParser.Parse(source));
-        Assert.Contains("PascalCase", ex.Message);
-    }
-
-    [Fact]
-    public void MissingEquals_ThrowsParseException()
-    {
-        var source = "mission BuildOperator KubernetesArchitect";
-
-        var ex = Assert.Throws<ParseException>(() => MclParser.Parse(source));
-        Assert.Contains("'='", ex.Message);
-    }
-
-    [Fact]
-    public void EmptyPipeline_ThrowsParseException()
-    {
-        var source = "mission BuildOperator =";
-
+        var source = "expert KubernetesArchitect = { RequirementsAnalyst }";
         Assert.Throws<ParseException>(() => MclParser.Parse(source));
     }
+
+    // ── Params ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MissionParams_ParseCorrectly()
+    {
+        var source = """
+            mission BuildOperator(goal, persona) = {
+                KubernetesArchitect
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        Assert.NotNull(mission);
+        Assert.Equal(["goal", "persona"], mission.Params);
+    }
+
+    // ── Context clause (key: value) ───────────────────────────────────────────
+
+    [Fact]
+    public void ContextClause_StringLiteral_ParsesCorrectly()
+    {
+        var source = """
+            mission BuildOperator = {
+                KubernetesArchitect
+                -> PrincipalReviewer(style: "terse ADR")
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        Assert.NotNull(mission);
+        var lastStep = mission.Pipeline.Elements.OfType<StepElement>().Last().Step;
+        Assert.Equal("PrincipalReviewer", lastStep.ExpertName);
+        var binding = Assert.Single(lastStep.Context);
+        Assert.Equal("style", binding.Key);
+        var value = Assert.IsType<StringBindingValue>(binding.Value);
+        Assert.Equal("terse ADR", value.Text);
+    }
+
+    [Fact]
+    public void ContextClause_VarRef_ParsesCorrectly()
+    {
+        var source = """
+            let myStyle = "verbose"
+            mission BuildOperator = {
+                KubernetesArchitect(style: myStyle)
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        Assert.NotNull(mission);
+        var step = mission.Pipeline.Elements.OfType<StepElement>().Single().Step;
+        var binding = Assert.Single(step.Context);
+        var value = Assert.IsType<VarRefBindingValue>(binding.Value);
+        Assert.Equal("myStyle", value.Name);
+    }
+
+    [Fact]
+    public void ContextClause_MultipleBindings_ParsesCorrectly()
+    {
+        var source = """
+            mission BuildOperator = {
+                DataExtractor(source: "prod", format: "json")
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var step = mission!.Pipeline.Elements.OfType<StepElement>().Single().Step;
+        Assert.Equal(2, step.Context.Count);
+        Assert.Equal("source", step.Context[0].Key);
+        Assert.Equal("format", step.Context[1].Key);
+    }
+
+    [Fact]
+    public void WithClause_OldSyntax_IsParseError()
+    {
+        var source = """
+            mission BuildOperator = {
+                PrincipalReviewer with { style = "terse" }
+            }
+            """;
+        Assert.Throws<ParseException>(() => MclParser.Parse(source));
+    }
+
+    // ── using clause ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UsingClause_ParsesCorrectly()
+    {
+        var source = """
+            mission BuildOperator = {
+                KubernetesArchitect using architect
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var step = mission!.Pipeline.Elements.OfType<StepElement>().Single().Step;
+        Assert.Equal("architect", step.Using);
+    }
+
+    [Fact]
+    public void UsingClause_WithContextClause_ParsesCorrectly()
+    {
+        var source = """
+            mission BuildOperator = {
+                PrincipalReviewer(style: "terse") using fast
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var step = mission!.Pipeline.Elements.OfType<StepElement>().Single().Step;
+        Assert.Equal("PrincipalReviewer", step.ExpertName);
+        Assert.Equal("fast", step.Using);
+        Assert.Single(step.Context);
+    }
+
+    // ── when() guards ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void WhenClause_StringEquals_ParsesCorrectly()
+    {
+        var source = """
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var steps = mission!.Pipeline.Elements.OfType<StepElement>().ToList();
+        Assert.Equal(2, steps.Count);
+        Assert.Null(steps[0].Step.When);
+        var guard = Assert.IsType<StringEqualsWhen>(steps[1].Step.When);
+        Assert.Equal("mode", guard.Key);
+        Assert.Equal("design", guard.Value);
+    }
+
+    [Fact]
+    public void WhenClause_Else_ParsesCorrectly()
+    {
+        var source = """
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+                -> Planner   when(else)
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var steps = mission!.Pipeline.Elements.OfType<StepElement>().ToList();
+        Assert.IsType<ElseWhen>(steps[2].Step.When);
+    }
+
+    [Fact]
+    public void WhenClause_FullRouterMission_ParsesCorrectly()
+    {
+        var source = """
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+                -> Developer when(mode: "task")
+                -> Reviewer  when(mode: "review")
+                -> Planner   when(else)
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var steps = mission!.Pipeline.Elements.OfType<StepElement>().ToList();
+        Assert.Equal(5, steps.Count);
+        Assert.Null(steps[0].Step.When);
+        Assert.IsType<StringEqualsWhen>(steps[1].Step.When);
+        Assert.IsType<StringEqualsWhen>(steps[2].Step.When);
+        Assert.IsType<StringEqualsWhen>(steps[3].Step.When);
+        Assert.IsType<ElseWhen>(steps[4].Step.When);
+    }
+
+    // ── loop(N) ───────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void LoopN_ParsedIntoMissionDeclaration()
+    {
+        var source = """
+            mission Demo loop(4) = {
+                Worker
+            }
+            """;
+        var mission = MclParser.Parse(source).Declarations.OfType<MissionDeclaration>().Single();
+        Assert.Equal(4, mission.MaxLoops);
+    }
+
+    [Fact]
+    public void NoLoop_MaxLoopsDefaultsToOne()
+    {
+        var mission = MclParser.Parse("mission Demo = { Worker }").Declarations.OfType<MissionDeclaration>().Single();
+        Assert.Equal(1, mission.MaxLoops);
+    }
+
+    [Fact]
+    public void OldLoopSyntax_IsParseError()
+    {
+        // Old: mission Demo = Worker loop 3  (no parens, no braces)
+        Assert.Throws<ParseException>(() => MclParser.Parse("mission Demo = Worker loop 3"));
+    }
+
+    // ── parallel {} ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ParallelBlock_ParsesCorrectly()
+    {
+        var source = """
+            mission Analysis(input) = {
+                DataExtractor
+                -> parallel {
+                    Summariser
+                    FactChecker
+                    Critic
+                }
+                -> Synthesiser
+            }
+            """;
+
+        var result = MclParser.Parse(source);
+
+        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
+        var elements = mission!.Pipeline.Elements.ToList();
+        Assert.Equal(3, elements.Count);
+        Assert.IsType<StepElement>(elements[0]);
+        var parallel = Assert.IsType<ParallelElement>(elements[1]);
+        Assert.Equal(["Summariser", "FactChecker", "Critic"],
+            parallel.Steps.Select(s => s.ExpertName));
+        Assert.IsType<StepElement>(elements[2]);
+    }
+
+    // ── let bindings ──────────────────────────────────────────────────────────
 
     [Fact]
     public void LetBinding_StringLiteral_ParsesCorrectly()
     {
         var source = """
             let goal = "Design a K8s operator"
-            mission BuildOperator = KubernetesArchitect
+            mission BuildOperator = { KubernetesArchitect }
             """;
 
         var result = MclParser.Parse(source);
@@ -148,7 +322,7 @@ public class ParserTests
     {
         var source = """
             let apiKey = env("OPENAI_API_KEY")
-            mission BuildOperator = KubernetesArchitect
+            mission BuildOperator = { KubernetesArchitect }
             """;
 
         var result = MclParser.Parse(source);
@@ -163,101 +337,58 @@ public class ParserTests
     public void LetBinding_EnvCallWithDefault_ParsesCorrectly()
     {
         var source = """
-            let model = env("FML_MODEL", "gpt-4o-mini")
-            mission BuildOperator = KubernetesArchitect
+            let model = env("MCL_MODEL", "gpt-4o-mini")
+            mission BuildOperator = { KubernetesArchitect }
             """;
 
         var result = MclParser.Parse(source);
 
         var binding = Assert.Single(result.Bindings);
         var value = Assert.IsType<EnvLetValue>(binding.Value);
-        Assert.Equal("FML_MODEL", value.VarName);
+        Assert.Equal("MCL_MODEL", value.VarName);
         Assert.Equal("gpt-4o-mini", value.DefaultValue);
     }
 
+    // ── Error cases ───────────────────────────────────────────────────────────
+
     [Fact]
-    public void MissionParams_ParseCorrectly()
+    public void LowercaseIdentifier_ThrowsParseException()
     {
-        var source = """
-            mission BuildOperator(goal, persona) =
-                KubernetesArchitect
-            """;
-
-        var result = MclParser.Parse(source);
-
-        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
-        Assert.NotNull(mission);
-        Assert.Equal(["goal", "persona"], mission.Params);
+        var source = "mission BuildOperator = { kubernetesArchitect }";
+        var ex = Assert.Throws<ParseException>(() => MclParser.Parse(source));
+        Assert.Contains("PascalCase", ex.Message);
     }
 
     [Fact]
-    public void WithClause_ParsesCorrectly()
+    public void MissingEquals_ThrowsParseException()
     {
-        var source = """
-            mission BuildOperator =
-                KubernetesArchitect
-                |> PrincipalReviewer with { style = "terse ADR" }
-            """;
-
-        var result = MclParser.Parse(source);
-
-        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
-        Assert.NotNull(mission);
-        var lastStep = mission.Pipeline.Steps[1];
-        Assert.Equal("PrincipalReviewer", lastStep.ExpertName);
-        var binding = Assert.Single(lastStep.With);
-        Assert.Equal("style", binding.Key);
-        var value = Assert.IsType<StringBindingValue>(binding.Value);
-        Assert.Equal("terse ADR", value.Text);
-    }
-
-    [Fact]
-    public void WithClause_VarRef_ParsesCorrectly()
-    {
-        var source = """
-            let myStyle = "verbose"
-            mission BuildOperator =
-                KubernetesArchitect with { style = myStyle }
-            """;
-
-        var result = MclParser.Parse(source);
-
-        var mission = Assert.Single(result.Declarations) as MissionDeclaration;
-        Assert.NotNull(mission);
-        var step = Assert.Single(mission.Pipeline.Steps);
-        var binding = Assert.Single(step.With);
-        var value = Assert.IsType<VarRefBindingValue>(binding.Value);
-        Assert.Equal("myStyle", value.Name);
-    }
-
-    // use is removed — experts are always loaded from ./experts implicitly
-
-    [Fact]
-    public void UseDeclaration_ThrowsParseException()
-    {
-        var source = """
-            use "./experts"
-            mission BuildOperator = KubernetesArchitect
-            """;
-
+        var source = "mission BuildOperator { KubernetesArchitect }";
         Assert.Throws<ParseException>(() => MclParser.Parse(source));
     }
 
     [Fact]
-    public void NoUseDeclaration_ParsesCorrectly()
+    public void EmptyPipeline_ThrowsParseException()
     {
-        var result = MclParser.Parse("mission BuildOperator = KubernetesArchitect");
-        Assert.Single(result.Declarations);
+        var source = "mission BuildOperator = { }";
+        Assert.Throws<ParseException>(() => MclParser.Parse(source));
     }
 
-    // Comments
+    [Fact]
+    public void MissingBraces_ThrowsParseException()
+    {
+        // Old no-braces form is now invalid
+        var source = "mission BuildOperator = KubernetesArchitect";
+        Assert.Throws<ParseException>(() => MclParser.Parse(source));
+    }
+
+    // ── Comments ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void LineComment_IsIgnored()
     {
         var result = MclParser.Parse("""
             // This is a comment
-            mission BuildOperator = KubernetesArchitect // inline comment
+            mission BuildOperator = { KubernetesArchitect } // inline comment
             """);
 
         var mission = Assert.Single(result.Declarations) as MissionDeclaration;

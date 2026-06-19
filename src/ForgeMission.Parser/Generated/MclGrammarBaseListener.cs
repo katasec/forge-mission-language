@@ -49,18 +49,6 @@ public partial class MclGrammarBaseListener : IMclGrammarListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitProgram([NotNull] MclGrammarParser.ProgramContext context) { }
 	/// <summary>
-	/// Enter a parse tree produced by <see cref="MclGrammarParser.useDecl"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void EnterUseDecl([NotNull] MclGrammarParser.UseDeclContext context) { }
-	/// <summary>
-	/// Exit a parse tree produced by <see cref="MclGrammarParser.useDecl"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void ExitUseDecl([NotNull] MclGrammarParser.UseDeclContext context) { }
-	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.letBinding"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -121,30 +109,6 @@ public partial class MclGrammarBaseListener : IMclGrammarListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitLoopClause([NotNull] MclGrammarParser.LoopClauseContext context) { }
 	/// <summary>
-	/// Enter a parse tree produced by <see cref="MclGrammarParser.expert"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void EnterExpert([NotNull] MclGrammarParser.ExpertContext context) { }
-	/// <summary>
-	/// Exit a parse tree produced by <see cref="MclGrammarParser.expert"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void ExitExpert([NotNull] MclGrammarParser.ExpertContext context) { }
-	/// <summary>
-	/// Enter a parse tree produced by <see cref="MclGrammarParser.ociSource"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void EnterOciSource([NotNull] MclGrammarParser.OciSourceContext context) { }
-	/// <summary>
-	/// Exit a parse tree produced by <see cref="MclGrammarParser.ociSource"/>.
-	/// <para>The default implementation does nothing.</para>
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	public virtual void ExitOciSource([NotNull] MclGrammarParser.OciSourceContext context) { }
-	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.params"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -169,6 +133,18 @@ public partial class MclGrammarBaseListener : IMclGrammarListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitPipeline([NotNull] MclGrammarParser.PipelineContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.pipelineElement"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterPipelineElement([NotNull] MclGrammarParser.PipelineElementContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.pipelineElement"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitPipelineElement([NotNull] MclGrammarParser.PipelineElementContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.step"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -181,17 +157,81 @@ public partial class MclGrammarBaseListener : IMclGrammarListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitStep([NotNull] MclGrammarParser.StepContext context) { }
 	/// <summary>
-	/// Enter a parse tree produced by <see cref="MclGrammarParser.withClause"/>.
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.contextClause"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
-	public virtual void EnterWithClause([NotNull] MclGrammarParser.WithClauseContext context) { }
+	public virtual void EnterContextClause([NotNull] MclGrammarParser.ContextClauseContext context) { }
 	/// <summary>
-	/// Exit a parse tree produced by <see cref="MclGrammarParser.withClause"/>.
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.contextClause"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
-	public virtual void ExitWithClause([NotNull] MclGrammarParser.WithClauseContext context) { }
+	public virtual void ExitContextClause([NotNull] MclGrammarParser.ContextClauseContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.usingClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterUsingClause([NotNull] MclGrammarParser.UsingClauseContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.usingClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitUsingClause([NotNull] MclGrammarParser.UsingClauseContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.whenClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterWhenClause([NotNull] MclGrammarParser.WhenClauseContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.whenClause"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitWhenClause([NotNull] MclGrammarParser.WhenClauseContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by the <c>StringEquals</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterStringEquals([NotNull] MclGrammarParser.StringEqualsContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by the <c>StringEquals</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitStringEquals([NotNull] MclGrammarParser.StringEqualsContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by the <c>ElseExpr</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterElseExpr([NotNull] MclGrammarParser.ElseExprContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by the <c>ElseExpr</c>
+	/// labeled alternative in <see cref="MclGrammarParser.whenExpr"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitElseExpr([NotNull] MclGrammarParser.ElseExprContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.parallelBlock"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterParallelBlock([NotNull] MclGrammarParser.ParallelBlockContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.parallelBlock"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitParallelBlock([NotNull] MclGrammarParser.ParallelBlockContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.binding"/>.
 	/// <para>The default implementation does nothing.</para>
@@ -204,6 +244,18 @@ public partial class MclGrammarBaseListener : IMclGrammarListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitBinding([NotNull] MclGrammarParser.BindingContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="MclGrammarParser.anyKey"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterAnyKey([NotNull] MclGrammarParser.AnyKeyContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="MclGrammarParser.anyKey"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitAnyKey([NotNull] MclGrammarParser.AnyKeyContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="MclGrammarParser.value"/>.
 	/// <para>The default implementation does nothing.</para>

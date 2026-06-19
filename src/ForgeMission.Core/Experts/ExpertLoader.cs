@@ -63,9 +63,9 @@ public class ExpertLoader(string expertsDirectory)
 
     public static void Validate(Program ast, Dictionary<string, ExpertDefinition> experts)
     {
-        var declaredInAst = ast.Declarations
-            .OfType<ExpertDeclaration>()
-            .Select(e => e.Name)
+        var missionNames = ast.Declarations
+            .OfType<MissionDeclaration>()
+            .Select(m => m.Name)
             .ToHashSet(StringComparer.Ordinal);
 
         var missionParams = ast.Declarations
@@ -74,17 +74,15 @@ public class ExpertLoader(string expertsDirectory)
             .ToHashSet(StringComparer.Ordinal);
 
         var allSteps = ast.Declarations
-            .SelectMany(d => d switch
-            {
-                MissionDeclaration m                          => m.Pipeline.Steps.Select(s => s.ExpertName),
-                ExpertDeclaration { Pipeline: { } p }         => p.Steps.Select(s => s.ExpertName),
-                _                                             => Enumerable.Empty<string>()
-            })
+            .OfType<MissionDeclaration>()
+            .SelectMany(m => GetStepNames(m.Pipeline))
             .Distinct(StringComparer.Ordinal);
 
+        // Step is valid if it has a loaded expert file, is a known mission (composition),
+        // or is a mission parameter. OCI/stdlib resolution happens at runtime (Spoke 3).
         var missing = allSteps
-            .Where(step => !declaredInAst.Contains(step)
-                        && !experts.ContainsKey(step)
+            .Where(step => !experts.ContainsKey(step)
+                        && !missionNames.Contains(step)
                         && !missionParams.Contains(step))
             .OrderBy(s => s)
             .ToList();
@@ -92,8 +90,16 @@ public class ExpertLoader(string expertsDirectory)
         if (missing.Count > 0)
             throw new ExpertLoadException(
                 $"Missing expert definitions for: {string.Join(", ", missing)}. " +
-                "Each expert must be declared in the .mcl file or have a matching markdown file in the experts directory.");
+                "Each expert must have a matching markdown file in the experts directory.");
     }
+
+    private static IEnumerable<string> GetStepNames(Pipeline pipeline)
+        => pipeline.Elements.SelectMany(e => e switch
+        {
+            StepElement se     => (IEnumerable<string>)[se.Step.ExpertName],
+            ParallelElement pe => pe.Steps.Select(s => s.ExpertName),
+            _                  => Enumerable.Empty<string>()
+        });
 
     internal static ExpertDefinition ParseFile(string path)
     {

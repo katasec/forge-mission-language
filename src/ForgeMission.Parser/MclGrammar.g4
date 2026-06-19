@@ -3,11 +3,7 @@ grammar MclGrammar;
 // Parser rules
 
 program
-    : useDecl* (letBinding | declaration | outputDecl)* EOF
-    ;
-
-useDecl
-    : USE STRING
+    : (letBinding | declaration | outputDecl)* EOF
     ;
 
 letBinding
@@ -16,7 +12,6 @@ letBinding
 
 declaration
     : mission
-    | expert
     ;
 
 outputDecl
@@ -24,19 +19,11 @@ outputDecl
     ;
 
 mission
-    : MISSION UPPER_ID params? EQUALS pipeline loopClause?
+    : MISSION UPPER_ID params? loopClause? EQUALS LBRACE pipeline RBRACE
     ;
 
 loopClause
-    : LOOP INT
-    ;
-
-expert
-    : EXPERT UPPER_ID params? EQUALS (ociSource | pipeline)
-    ;
-
-ociSource
-    : FROM STRING VERSION STRING
+    : LOOP LPAREN INT RPAREN
     ;
 
 params
@@ -44,24 +31,53 @@ params
     ;
 
 pipeline
-    : step (PIPE step)*
+    : pipelineElement (ARROW pipelineElement)*
+    ;
+
+pipelineElement
+    : step
+    | parallelBlock
     ;
 
 step
-    : UPPER_ID withClause?
+    : UPPER_ID contextClause? usingClause? whenClause?
     ;
 
-withClause
-    : WITH LBRACE binding (COMMA binding)* RBRACE
+contextClause
+    : LPAREN binding (COMMA binding)* RPAREN
+    ;
+
+usingClause
+    : USING LOWER_ID
+    ;
+
+whenClause
+    : WHEN LPAREN whenExpr RPAREN
+    ;
+
+whenExpr
+    : anyKey COLON STRING    # StringEquals
+    | ELSE                   # ElseExpr
+    ;
+
+parallelBlock
+    : PARALLEL LBRACE step+ RBRACE
     ;
 
 binding
-    : LOWER_ID EQUALS value
+    : anyKey COLON value
+    ;
+
+// anyKey allows keyword tokens to be used as binding/when keys (e.g. when(output: "x"))
+anyKey
+    : LOWER_ID
+    | LET | MISSION | LOOP | USING | WHEN | PARALLEL | ENV | OUTPUT
     ;
 
 value
     : STRING
     | LOWER_ID
+    | INT
     | envCall
     ;
 
@@ -69,26 +85,27 @@ envCall
     : ENV LPAREN STRING (COMMA STRING)? RPAREN
     ;
 
-// Lexer rules — keywords before LOWER_ID so they take priority
+// Lexer rules — keywords listed before LOWER_ID so they take priority
 
-USE     : 'use'     ;
-LET     : 'let'     ;
-MISSION : 'mission' ;
-EXPERT  : 'expert'  ;
-FROM    : 'from'    ;
-VERSION : 'version' ;
-WITH    : 'with'    ;
-ENV     : 'env'     ;
-OUTPUT  : 'output'  ;
-LOOP    : 'loop'    ;
-INT     : [0-9]+    ;
-PIPE    : '|>'      ;
-EQUALS  : '='       ;
-LPAREN  : '('       ;
-RPAREN  : ')'       ;
-LBRACE  : '{'       ;
-RBRACE  : '}'       ;
-COMMA   : ','       ;
+LET      : 'let'      ;
+MISSION  : 'mission'  ;
+LOOP     : 'loop'     ;
+USING    : 'using'    ;
+WHEN     : 'when'     ;
+ELSE     : 'else'     ;
+PARALLEL : 'parallel' ;
+ENV      : 'env'      ;
+OUTPUT   : 'output'   ;
+
+INT      : [0-9]+     ;
+ARROW    : '->'       ;
+EQUALS   : '='        ;
+COLON    : ':'        ;
+LPAREN   : '('        ;
+RPAREN   : ')'        ;
+LBRACE   : '{'        ;
+RBRACE   : '}'        ;
+COMMA    : ','        ;
 
 UPPER_ID
     : [A-Z][a-zA-Z0-9]*

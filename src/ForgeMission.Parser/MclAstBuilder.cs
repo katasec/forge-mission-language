@@ -4,14 +4,6 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
 {
     public override object? VisitProgram(MclGrammarParser.ProgramContext ctx)
     {
-        if (ctx.useDecl().Length > 0)
-        {
-            var first = ctx.useDecl()[0];
-            throw new ParseException(
-                "'use' declarations are no longer needed — experts are loaded from ./experts automatically. Remove the 'use' line.",
-                first.Start.Line, first.Start.Column);
-        }
-
         var bindings = ctx.letBinding()
             .Select(b => (LetBinding)Visit(b)!)
             .ToList();
@@ -44,7 +36,6 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
     public override object? VisitDeclaration(MclGrammarParser.DeclarationContext ctx)
     {
         if (ctx.mission() is { } m) return Visit(m);
-        if (ctx.expert() is { } e)  return Visit(e);
         throw new ParseException("Unknown declaration", ctx.Start.Line, ctx.Start.Column);
     }
 
@@ -57,47 +48,63 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
         return new MissionDeclaration(name, @params, pipeline, maxLoops);
     }
 
-    public override object? VisitExpert(MclGrammarParser.ExpertContext ctx)
-    {
-        var name    = ctx.UPPER_ID().GetText();
-        var @params = ParseParams(ctx.@params());
-
-        if (ctx.ociSource() is { } oci)
-        {
-            var strings  = oci.STRING();
-            var registry = StripQuotes(strings[0].GetText());
-            var version  = StripQuotes(strings[1].GetText());
-            return new ExpertDeclaration(name, @params, Pipeline: null, Source: new OciSource(registry, version));
-        }
-
-        var pipeline = (Pipeline)Visit(ctx.pipeline())!;
-        return new ExpertDeclaration(name, @params, pipeline);
-    }
-
     public override object? VisitPipeline(MclGrammarParser.PipelineContext ctx)
     {
-        var steps = ctx.step().Select(s => (Step)Visit(s)!).ToList();
-        return new Pipeline(steps);
+        var elements = ctx.pipelineElement()
+            .Select(e => (PipelineElement)Visit(e)!)
+            .ToList();
+        return new Pipeline(elements);
+    }
+
+    public override object? VisitPipelineElement(MclGrammarParser.PipelineElementContext ctx)
+    {
+        if (ctx.step() is { } s)         return new StepElement((Step)Visit(s)!);
+        if (ctx.parallelBlock() is { } p) return Visit(p);
+        throw new ParseException("Unknown pipeline element", ctx.Start.Line, ctx.Start.Column);
     }
 
     public override object? VisitStep(MclGrammarParser.StepContext ctx)
     {
-        var name = ctx.UPPER_ID().GetText();
-        var with = ctx.withClause() is { } wc
-            ? (IReadOnlyList<Binding>)Visit(wc)!
+        var name    = ctx.UPPER_ID().GetText();
+        var context = ctx.contextClause() is { } cc
+            ? (IReadOnlyList<Binding>)Visit(cc)!
             : (IReadOnlyList<Binding>)[];
-        return new Step(name, with);
+        var @using  = ctx.usingClause() is { } uc ? (string)Visit(uc)! : null;
+        var when    = ctx.whenClause() is { } wc ? (WhenClause)Visit(wc)! : null;
+        return new Step(name, context, @using, when);
     }
 
-    public override object? VisitWithClause(MclGrammarParser.WithClauseContext ctx)
+    public override object? VisitContextClause(MclGrammarParser.ContextClauseContext ctx)
     {
         var bindings = ctx.binding().Select(b => (Binding)Visit(b)!).ToList();
         return (IReadOnlyList<Binding>)bindings;
     }
 
+    public override object? VisitUsingClause(MclGrammarParser.UsingClauseContext ctx)
+        => ctx.LOWER_ID().GetText();
+
+    public override object? VisitWhenClause(MclGrammarParser.WhenClauseContext ctx)
+        => Visit(ctx.whenExpr());
+
+    public override object? VisitStringEquals(MclGrammarParser.StringEqualsContext ctx)
+    {
+        var key   = ctx.anyKey().GetText();
+        var value = StripQuotes(ctx.STRING().GetText());
+        return new StringEqualsWhen(key, value);
+    }
+
+    public override object? VisitElseExpr(MclGrammarParser.ElseExprContext ctx)
+        => new ElseWhen();
+
+    public override object? VisitParallelBlock(MclGrammarParser.ParallelBlockContext ctx)
+    {
+        var steps = ctx.step().Select(s => (Step)Visit(s)!).ToList();
+        return new ParallelElement(steps);
+    }
+
     public override object? VisitBinding(MclGrammarParser.BindingContext ctx)
     {
-        var key   = ctx.LOWER_ID().GetText();
+        var key   = ctx.anyKey().GetText();
         var value = ParseBindingValue(ctx.value());
         return new Binding(key, value);
     }
@@ -127,6 +134,8 @@ internal class MclAstBuilder : MclGrammarBaseVisitor<object?>
             var ev = ParseEnvLetValue(env);
             return new EnvBindingValue(ev.VarName, ev.DefaultValue);
         }
+        if (ctx.INT() is { } num)
+            return new NumberBindingValue(int.Parse(num.GetText()));
         if (ctx.LOWER_ID() is { } id)
             return new VarRefBindingValue(id.GetText());
         throw new ParseException("Unknown value form", ctx.Start.Line, ctx.Start.Column);

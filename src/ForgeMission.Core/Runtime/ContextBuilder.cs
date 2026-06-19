@@ -41,6 +41,7 @@ public static class ContextBuilder
     internal static string ResolveBindingValue(BindingValue value, Dictionary<string, object> context) => value switch
     {
         StringBindingValue v => v.Text,
+        NumberBindingValue v => v.Number.ToString(),
         VarRefBindingValue v => context.TryGetValue(v.Name, out var ctx)
             ? ctx.ToString()!
             : throw new InvalidOperationException($"Variable '{v.Name}' not found in context"),

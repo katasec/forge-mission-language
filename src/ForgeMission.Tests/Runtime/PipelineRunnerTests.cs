@@ -13,10 +13,12 @@ public class PipelineRunnerTests
     private static Dictionary<string, ExpertDefinition> Experts(params string[] names) =>
         names.ToDictionary(n => n, Expert, StringComparer.Ordinal);
 
+    // ── Basic pipeline ────────────────────────────────────────────────────────
+
     [Fact]
     public async Task SingleStep_CallsRunnerOnce_ReturnsOutput()
     {
-        var ast    = MclParser.Parse("mission BuildOperator = KubernetesArchitect");
+        var ast    = MclParser.Parse("mission BuildOperator = { KubernetesArchitect }");
         var stub   = new StubExpertRunner();
         var result = await new PipelineRunner(stub)
             .RunAsync(ast, Experts("KubernetesArchitect"), new PipelineRunOptions("BuildOperator"));
@@ -30,10 +32,11 @@ public class PipelineRunnerTests
     public async Task MultiStep_PassesOutputForward()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
-                |> PrincipalReviewer
+                -> SecurityArchitect
+                -> PrincipalReviewer
+            }
             """);
 
         var stub = new StubExpertRunner((name, ctx) =>
@@ -56,9 +59,10 @@ public class PipelineRunnerTests
     public async Task Result_ContainsLastStepOutput()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> PrincipalReviewer
+                -> PrincipalReviewer
+            }
             """);
 
         var stub   = new StubExpertRunner((name, _) => $"Output from {name}");
@@ -73,9 +77,10 @@ public class PipelineRunnerTests
     public async Task StepWriter_ReceivesEachStepOutput()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         var sw     = new StringWriter();
@@ -95,9 +100,10 @@ public class PipelineRunnerTests
     public async Task CancellationToken_IsRespected()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         var cts = new CancellationTokenSource();
@@ -110,12 +116,14 @@ public class PipelineRunnerTests
                           cts.Token));
     }
 
+    // ── Let bindings ──────────────────────────────────────────────────────────
+
     [Fact]
     public async Task LetBindings_SeedContext()
     {
         var ast = MclParser.Parse("""
             let goal = "Design a K8s operator"
-            mission BuildOperator = KubernetesArchitect
+            mission BuildOperator = { KubernetesArchitect }
             """);
 
         var stub = new StubExpertRunner();
@@ -126,26 +134,11 @@ public class PipelineRunnerTests
     }
 
     [Fact]
-    public async Task WithClause_OverridesContextForStep()
-    {
-        var ast = MclParser.Parse("""
-            mission BuildOperator =
-                KubernetesArchitect with { style = "terse" }
-            """);
-
-        var stub = new StubExpertRunner();
-        await new PipelineRunner(stub)
-            .RunAsync(ast, Experts("KubernetesArchitect"), new PipelineRunOptions("BuildOperator"));
-
-        Assert.Equal("terse", stub.Calls[0].Context["style"].ToString());
-    }
-
-    [Fact]
     public async Task VarFlag_OverridesLetBinding()
     {
         var ast = MclParser.Parse("""
             let goal = "original"
-            mission BuildOperator = KubernetesArchitect
+            mission BuildOperator = { KubernetesArchitect }
             """);
 
         var stub = new StubExpertRunner();
@@ -161,8 +154,8 @@ public class PipelineRunnerTests
     public void MissingEnvVar_ThrowsClearly()
     {
         var ast = MclParser.Parse("""
-            let apiKey = env("FMLTEST_MISSING_VAR_XYZ")
-            mission BuildOperator = KubernetesArchitect
+            let apiKey = env("MCLTEST_MISSING_VAR_XYZ")
+            mission BuildOperator = { KubernetesArchitect }
             """);
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
@@ -171,10 +164,28 @@ public class PipelineRunnerTests
                           new PipelineRunOptions("BuildOperator"))
                 .GetAwaiter().GetResult());
 
-        Assert.Contains("FMLTEST_MISSING_VAR_XYZ", ex.Message);
+        Assert.Contains("MCLTEST_MISSING_VAR_XYZ", ex.Message);
     }
 
-    // Phase 17 — provider configuration bindings
+    // ── Context clause ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ContextClause_OverridesContextForStep()
+    {
+        var ast = MclParser.Parse("""
+            mission BuildOperator = {
+                KubernetesArchitect(style: "terse")
+            }
+            """);
+
+        var stub = new StubExpertRunner();
+        await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("KubernetesArchitect"), new PipelineRunOptions("BuildOperator"));
+
+        Assert.Equal("terse", stub.Calls[0].Context["style"].ToString());
+    }
+
+    // ── Provider configuration (let bindings, still valid pre-Spoke-5) ────────
 
     [Fact]
     public async Task ProviderBindings_AllFourSeededInContext()
@@ -184,7 +195,7 @@ public class PipelineRunnerTests
             let apiKey   = env("MCL_API_KEY")
             let model    = env("MCL_MODEL", "gpt-4o-mini")
             let endpoint = env("MCL_ENDPOINT", "")
-            mission Demo = Worker
+            mission Demo = { Worker }
             """);
 
         Environment.SetEnvironmentVariable("MCL_API_KEY", "sk-test");
@@ -213,7 +224,7 @@ public class PipelineRunnerTests
             let provider = env("MCL_PROVIDER", "openai")
             let apiKey   = env("MCL_API_KEY")
             let model    = env("MCL_MODEL", "gpt-4o-mini")
-            mission Demo = Worker
+            mission Demo = { Worker }
             """);
 
         Environment.SetEnvironmentVariable("MCL_API_KEY", "sk-test");
@@ -237,7 +248,7 @@ public class PipelineRunnerTests
     {
         var ast = MclParser.Parse("""
             let apiKey = env("MCL_API_KEY")
-            mission Demo = Worker
+            mission Demo = { Worker }
             """);
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
@@ -248,15 +259,16 @@ public class PipelineRunnerTests
         Assert.Contains("MCL_API_KEY", ex.Message);
     }
 
-    // Phase 12 — StepEnvelope / fail-fast
+    // ── StepEnvelope / fail-fast ──────────────────────────────────────────────
 
     [Fact]
     public async Task StepFail_StopsImmediately_SecondStepNeverCalled()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         var stub = new StubExpertRunner((name, _) =>
@@ -278,9 +290,10 @@ public class PipelineRunnerTests
     public async Task StepPass_PipelineContinues()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         var stub   = new StubExpertRunner();
@@ -292,16 +305,16 @@ public class PipelineRunnerTests
         Assert.Equal(MissionStatus.Pass, result.Status);
     }
 
-    // Phase 14 — loop N
+    // ── loop(N) ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Loop_RetriesUntilAllStepsPass()
     {
         var ast = MclParser.Parse("""
-            mission RefinedPitch =
+            mission RefinedPitch loop(3) = {
                 Drafter
-                |> Judge
-                loop 3
+                -> Judge
+            }
             """);
 
         var callCount = 0;
@@ -325,10 +338,10 @@ public class PipelineRunnerTests
     public async Task Loop_ExhaustedFails_SurfacesLastFailReason()
     {
         var ast = MclParser.Parse("""
-            mission RefinedPitch =
+            mission RefinedPitch loop(3) = {
                 Drafter
-                |> Judge
-                loop 3
+                -> Judge
+            }
             """);
 
         var stub = new StubExpertRunner((name, _) =>
@@ -349,9 +362,9 @@ public class PipelineRunnerTests
     public async Task AttemptVariable_InjectedEachAttempt()
     {
         var ast = MclParser.Parse("""
-            mission Demo =
+            mission Demo loop(3) = {
                 Worker
-                loop 3
+            }
             """);
 
         var attempts = new List<string>();
@@ -371,9 +384,9 @@ public class PipelineRunnerTests
     public async Task MaxLoopsVariable_InjectedEachAttempt()
     {
         var ast = MclParser.Parse("""
-            mission Demo =
+            mission Demo loop(5) = {
                 Worker
-                loop 5
+            }
             """);
 
         var maxLoopsValues = new List<string>();
@@ -392,7 +405,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task NoLoop_AttemptAndMaxLoopsDefaultToOne()
     {
-        var ast  = MclParser.Parse("mission Demo = Worker");
+        var ast  = MclParser.Parse("mission Demo = { Worker }");
         var stub = new StubExpertRunner();
 
         var result = await new PipelineRunner(stub)
@@ -403,19 +416,117 @@ public class PipelineRunnerTests
         Assert.Equal(1, result.Attempts);
     }
 
+    // ── when() routing ────────────────────────────────────────────────────────
+
     [Fact]
-    public void LoopN_ParsedIntoMissionDeclaration()
+    public async Task When_MatchingGuard_StepRuns()
     {
-        var ast     = MclParser.Parse("mission Demo = Worker loop 4");
-        var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
-        Assert.Equal(4, mission.MaxLoops);
+        var ast = MclParser.Parse("""
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+                -> Developer when(mode: "task")
+                -> Planner   when(else)
+            }
+            """);
+
+        // Classifier sets mode = "design" via context — simulate with stub
+        var stub = new StubExpertRunner((name, ctx) =>
+        {
+            if (name == "Classifier")
+            {
+                // Next steps read context["mode"]; return envelope that sets it
+                ctx["mode"] = "design";
+            }
+            return new StepEnvelope($"Output from {name}");
+        });
+
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Classifier", "Architect", "Developer", "Planner"),
+                      new PipelineRunOptions("HandleRequest"));
+
+        Assert.Equal(MissionStatus.Pass, result.Status);
+        var calledNames = stub.Calls.Select(c => c.ExpertName).ToList();
+        Assert.Contains("Classifier", calledNames);
+        Assert.Contains("Architect", calledNames);
+        Assert.DoesNotContain("Developer", calledNames);
+        Assert.DoesNotContain("Planner", calledNames);
     }
 
     [Fact]
-    public void NoLoop_MaxLoopsDefaultsToOne()
+    public async Task When_NoMatch_ElseBranchRuns()
     {
-        var ast     = MclParser.Parse("mission Demo = Worker");
-        var mission = ast.Declarations.OfType<MissionDeclaration>().Single();
-        Assert.Equal(1, mission.MaxLoops);
+        var ast = MclParser.Parse("""
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+                -> Developer when(mode: "task")
+                -> Planner   when(else)
+            }
+            """);
+
+        var stub = new StubExpertRunner((name, ctx) =>
+        {
+            if (name == "Classifier") ctx["mode"] = "unknown";
+            return new StepEnvelope($"Output from {name}");
+        });
+
+        await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("Classifier", "Architect", "Developer", "Planner"),
+                      new PipelineRunOptions("HandleRequest"));
+
+        var calledNames = stub.Calls.Select(c => c.ExpertName).ToList();
+        Assert.DoesNotContain("Architect", calledNames);
+        Assert.DoesNotContain("Developer", calledNames);
+        Assert.Contains("Planner", calledNames);
+    }
+
+    [Fact]
+    public async Task When_NoMatchAndNoElse_Throws()
+    {
+        var ast = MclParser.Parse("""
+            mission HandleRequest(input) = {
+                Classifier
+                -> Architect when(mode: "design")
+                -> Developer when(mode: "task")
+            }
+            """);
+
+        var stub = new StubExpertRunner((name, ctx) =>
+        {
+            if (name == "Classifier") ctx["mode"] = "unknown";
+            return new StepEnvelope($"Output from {name}");
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new PipelineRunner(stub)
+                .RunAsync(ast, Experts("Classifier", "Architect", "Developer"),
+                          new PipelineRunOptions("HandleRequest")));
+    }
+
+    // ── parallel {} ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ParallelBlock_AllStepsExecute()
+    {
+        var ast = MclParser.Parse("""
+            mission Analysis(input) = {
+                DataExtractor
+                -> parallel {
+                    Summariser
+                    FactChecker
+                }
+                -> Synthesiser
+            }
+            """);
+
+        var stub   = new StubExpertRunner((name, _) => $"Output from {name}");
+        var result = await new PipelineRunner(stub)
+            .RunAsync(ast, Experts("DataExtractor", "Summariser", "FactChecker", "Synthesiser"),
+                      new PipelineRunOptions("Analysis"));
+
+        var names = stub.Calls.Select(c => c.ExpertName).ToList();
+        Assert.Equal(["DataExtractor", "Summariser", "FactChecker", "Synthesiser"], names);
+        Assert.Equal(MissionStatus.Pass, result.Status);
     }
 }

@@ -47,9 +47,10 @@ public class DirectExpertRunnerIntegrationTests
         Skip.If(string.IsNullOrWhiteSpace(ApiKey), "OPENAI_API_KEY not set — skipping integration test");
 
         var ast = MclParser.Parse("""
-            mission TestMission =
+            mission TestMission = {
                 Summariser
-                |> Reviewer
+                -> Reviewer
+            }
             """);
 
         var experts = new Dictionary<string, ExpertDefinition>

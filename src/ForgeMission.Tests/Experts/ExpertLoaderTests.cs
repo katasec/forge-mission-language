@@ -127,9 +127,10 @@ public class ExpertLoaderTests : IDisposable
     public void Validate_MissingExpert_ThrowsExpertLoadException()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         WriteDirExpert("KubernetesArchitect", ValidExpertMarkdown("KubernetesArchitect", "MissionBrief", "ArchitectureProposal"));
@@ -143,9 +144,10 @@ public class ExpertLoaderTests : IDisposable
     public void Validate_AllExpertsPresent_DoesNotThrow()
     {
         var ast = MclParser.Parse("""
-            mission BuildOperator =
+            mission BuildOperator = {
                 KubernetesArchitect
-                |> SecurityArchitect
+                -> SecurityArchitect
+            }
             """);
 
         WriteDirExpert("KubernetesArchitect", ValidExpertMarkdown("KubernetesArchitect", "MissionBrief", "ArchitectureProposal"));
@@ -157,15 +159,19 @@ public class ExpertLoaderTests : IDisposable
     }
 
     [Fact]
-    public void Validate_ExpertDeclaredInAst_DoesNotRequireMarkdownFile()
+    public void Validate_MissionUsedAsStep_DoesNotRequireMarkdownFile()
     {
+        // Mission composition: a step that names another mission in the AST
+        // is valid even without a markdown expert file.
         var ast = MclParser.Parse("""
-            expert KubernetesArchitect =
+            mission InnerMission = {
                 RequirementsAnalyst
-                |> PlatformArchitect
+                -> PlatformArchitect
+            }
 
-            mission BuildOperator =
-                KubernetesArchitect
+            mission BuildOperator = {
+                InnerMission
+            }
             """);
 
         WriteDirExpert("RequirementsAnalyst", ValidExpertMarkdown("RequirementsAnalyst", "Brief", "Analysis"));

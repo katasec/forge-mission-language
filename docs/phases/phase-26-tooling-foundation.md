@@ -18,7 +18,7 @@ The current design is well-positioned for all three. The grammar is clean, no wh
 
 | Spoke | Description | Status |
 |-------|-------------|--------|
-| [Spoke 1 — Source Positions](phase-26-spoke-1-source-positions.md) | Add `SourceSpan` to every AST node — prerequisite for all editor tooling | Todo |
+| [Spoke 1 — Source Positions](phase-26-spoke-1-source-positions.md) | Add `SourceSpan` to every AST node — prerequisite for all editor tooling AND the error message underline renderer (see Decision 1 in Phase 25 pre-flight) | Todo |
 | [Spoke 2 — TextMate Grammar](phase-26-spoke-2-textmate.md) | Syntax highlighting for VS Code, GitHub, Sublime — derivable from ANTLR grammar | Todo |
 | [Spoke 3 — Tree-sitter Grammar](phase-26-spoke-3-tree-sitter.md) | Incremental parsing, error-tolerant — used by Neovim, GitHub, VS Code | Todo |
 | [Spoke 4 — LSP Server](phase-26-spoke-4-lsp.md) | Completion, hover, go-to-definition, diagnostics — workspace-aware | Todo |

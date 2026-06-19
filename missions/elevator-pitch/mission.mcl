@@ -10,7 +10,8 @@ let model    = env("MCL_MODEL", "gpt-4o-mini")
 
 let product  = "an app that turns voice memos into structured tasks"
 
-mission QuickPitch(product) =
+mission QuickPitch(product) = {
     PitchWriter  // single expert, single pass
+}
 
 output(QuickPitch)

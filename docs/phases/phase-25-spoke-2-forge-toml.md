@@ -59,12 +59,17 @@ Supported fields per profile:
 - `[providers.default]` is required if any step uses an LLM
 - A profile named in a `with { provider = "name" }` clause must exist in `forge.toml`
 - Unknown fields in a provider profile are an error — no silent ignore
+- Unknown `provider` values (not in the built-in registry) are a hard error in Phase 25 — third-party provider registration is a future extension point
+
+## Provider schema validation
+
+Field validation delegates to `ProviderSchemaRegistry` (defined in Spoke 5). `ForgeTomlReader` calls the registry to check required fields for each `[providers.*]` section and emits schema-aware errors per Decision 1 format. Spoke 2 owns the TOML parsing; Spoke 5 owns the schema knowledge.
 
 ## Implementation
 
 - Add `Tommy` or `Tomlyn` TOML parser package (AOT-safe, verify IL trimming)
 - `ForgeToml` POCO with `[JsonSerializable]` / STJ source gen for any JSON paths; TOML deserialization via the chosen library
-- `ForgeTomlReader` — reads and validates `forge.toml`, returns a typed `ForgeManifest`
+- `ForgeTomlReader` — reads and validates `forge.toml`, returns a typed `ForgeManifest`; delegates provider field validation to `ProviderSchemaRegistry`
 - `ForgeManifest` exposes `IReadOnlyDictionary<string, string> Experts` and `IReadOnlyDictionary<string, ProviderProfile> Providers`
 - Validate at startup in both `forge init` and `forge run` — fail fast with a clear error if `forge.toml` is missing or malformed
 

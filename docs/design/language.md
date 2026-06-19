@@ -1,224 +1,389 @@
-# FML — Language Design
+# MCL — Language Design
 
 ## Primitives
 
-The language has exactly three primitives. This is intentional — the language should remain small unless a new construct clearly improves reasoning composition.
+The language has seven primitives. Each was added only when it clearly improved reasoning
+composition. Nothing is added without a design decision recorded in the pre-flight doc.
 
 | Primitive | Meaning |
 |-----------|---------|
-| `mission` | A problem or desired outcome |
-| `expert`  | A reusable reasoning capability |
-| `\|>`      | Progressive refinement / expert composition |
+| `mission` | A reasoning workflow — declares a named pipeline with typed inputs |
+| `->` | Sequential composition — output of one step becomes input of the next |
+| `parallel {}` | Concurrent expert execution — all experts in the block run simultaneously |
+| `when()` | Conditional step guard — step executes only if the context bag matches |
+| `loop(N)` | Quality-convergence retry — reruns the pipeline up to N times until the last step passes |
+| `debate {}` | Multi-agent deliberation — agents cross-critique for N rounds, synthesiser follows *(deferred — see Phase 26+)* |
+| Mission as step | Composition — a mission used as a step in another mission's pipeline |
 
 ## Grammar
 
-The authoritative grammar is [`src/ForgeMission.Core/Parser/FmlGrammar.g4`](../../src/ForgeMission.Core/Parser/FmlGrammar.g4). The ANTLR4 tool generates the lexer and parser from this file.
+The authoritative grammar is [`src/ForgeMission.Core/Parser/MclGrammar.g4`](../../src/ForgeMission.Core/Parser/MclGrammar.g4). The ANTLR4 tool generates the lexer and parser from this file.
 
 ```antlr
-grammar FmlGrammar;
+grammar MclGrammar;
 
-program    : (letBinding | declaration)* EOF ;
-letBinding : 'let' LOWER_ID '=' value ;
-declaration : mission | expert ;
-mission    : 'mission' UPPER_ID params? '=' pipeline ;
-expert     : 'expert' UPPER_ID params? '=' pipeline ;
-params     : '(' LOWER_ID (',' LOWER_ID)* ')' ;
-pipeline   : step ('|>' step)* ;
-step       : UPPER_ID withClause? ;
-withClause : 'with' '{' binding (',' binding)* '}' ;
-binding    : LOWER_ID '=' value ;
-value      : STRING | LOWER_ID | envCall ;
-envCall    : 'env' '(' STRING (',' STRING)? ')' ;
+program         : (letBinding | declaration)* EOF ;
+letBinding      : 'let' LOWER_ID '=' value ;
+declaration     : mission ;
 
-MISSION  : 'mission' ; EXPERT : 'expert' ; LET : 'let' ; WITH : 'with' ; ENV : 'env' ;
-PIPE     : '|>'      ; EQUALS : '='      ;
-LPAREN   : '('       ; RPAREN : ')'      ;
-LBRACE   : '{'       ; RBRACE : '}'      ;
-COMMA    : ','       ;
+mission         : 'mission' UPPER_ID params? loopClause? '=' '{' pipeline '}' ;
+params          : '(' LOWER_ID (',' LOWER_ID)* ')' ;
+loopClause      : 'loop' '(' NUMBER ')' ;
+
+pipeline        : pipelineElement ('->' pipelineElement)* ;
+pipelineElement : step | parallelBlock | debateBlock ;
+
+step            : UPPER_ID contextClause? usingClause? whenClause? ;
+contextClause   : '(' binding (',' binding)* ')' ;
+usingClause     : 'using' LOWER_ID ;
+whenClause      : 'when' '(' whenExpr ')' ;
+whenExpr        : LOWER_ID ':' STRING    # StringEquals
+                | 'else'                 # Else
+                ;
+
+parallelBlock   : 'parallel' '{' step+ '}' ;
+debateBlock     : 'debate' '(' 'rounds' ':' NUMBER ')' '{' step+ '}' ;
+
+binding         : LOWER_ID ':' value ;
+value           : STRING | LOWER_ID | NUMBER | envCall ;
+envCall         : 'env' '(' STRING (',' STRING)? ')' ;
+
+// Keywords
+MISSION  : 'mission' ; LET     : 'let'      ; ENV     : 'env'     ;
+PARALLEL : 'parallel'; DEBATE  : 'debate'   ; LOOP    : 'loop'    ;
+USING    : 'using'   ; WHEN    : 'when'     ; ELSE    : 'else'    ;
+ROUNDS   : 'rounds'  ;
+
+// Operators and punctuation
+ARROW    : '->' ; EQUALS : '=' ; COLON : ':' ;
+LPAREN   : '(' ; RPAREN : ')' ; LBRACE : '{' ; RBRACE : '}' ; COMMA : ',' ;
+
+// Identifiers and literals
 UPPER_ID : [A-Z][a-zA-Z0-9]* ;
 LOWER_ID : [a-z][a-zA-Z0-9]* ;
+NUMBER   : [0-9]+ ('.' [0-9]+)? ;
 STRING   : '"' (~["\r\n])* '"' ;
 WS       : [ \t\r\n]+ -> skip ;
+COMMENT  : '#' ~[\r\n]* -> skip ;
 ```
 
 To regenerate the parser after a grammar change:
-```
+```bash
 java -jar /tmp/antlr4-4.13.1-complete.jar -Dlanguage=CSharp -package ForgeMission.Core.Parser \
      -visitor -o src/ForgeMission.Core/Parser/Generated \
-     src/ForgeMission.Core/Parser/FmlGrammar.g4
-# Then move generated files out of the nested path:
-# cp src/ForgeMission.Core/Parser/Generated/src/ForgeMission.Core/Parser/*.cs \
-#    src/ForgeMission.Core/Parser/Generated/
-# rm -rf src/ForgeMission.Core/Parser/Generated/src
+     src/ForgeMission.Core/Parser/MclGrammar.g4
+```
+
+## Syntax reference
+
+### Full example — all primitives in use
+
+```fsharp
+mission SecurityAudit(codebase) loop(2) = {
+    DataExtractor(source: codebase)
+    -> debate(rounds: 3) {
+        SecurityExpert using architect
+        ArchitectExpert
+        CriticalReviewer
+    }
+    -> Synthesiser
+    -> QualityJudge
+}
+```
+
+### Sequential pipeline — `=` and `->`
+
+```fsharp
+mission BuildOperatorDesign(goal) = {
+    KubernetesArchitect
+    -> SecurityArchitect
+    -> PrincipalReviewer
+}
+```
+
+`->` ("passes to") is the sequential composition operator. The output of each step
+becomes the input of the next. It carries no prior-art semantics — it is neutral and
+directional.
+
+### Step context — `(key: value)`
+
+Named parameters with `:` pass domain context to a specific step:
+
+```fsharp
+DataExtractor(source: codebase, format: "json")
+```
+
+`:` is the universal named parameter separator — used in step context, execution config
+(`debate(rounds: 3)`), and guard conditions (`when(mode: "design")`).
+
+### Provider profile selection — `using`
+
+```fsharp
+-> SecurityArchitect using architect
+-> Synthesiser using architect with no context
+-> PrincipalReviewer(style: "terse") using fast
+```
+
+`using <profile>` selects a named provider profile from `forge.toml` for that step only.
+All other steps use the `default` profile. `using` is always infrastructure; `()` context
+is always domain. They are orthogonal and composable.
+
+### Conditional steps — `when()`
+
+```fsharp
+mission HandleRequest(input) = {
+    Classifier
+    -> Architect when(mode: "design")
+    -> Developer when(mode: "task")
+    -> Reviewer  when(mode: "review")
+    -> Planner   when(else)
+}
+```
+
+`when(key: value)` guards a step — it runs only if the context bag key matches the value.
+`when(else)` is the default branch. Hard error if nothing matches and no `when(else)` is
+present. Unmatched steps log at `--verbose` only.
+
+**Phase 25:** exact string match only. Richer expressions (`>`, `or`, `contains`) are
+deferred until the typed context bag arrives. Grammar is designed to be extensible:
+new expression types are additive `WhenExpression` subclasses.
+
+### Parallel execution — `parallel {}`
+
+```fsharp
+-> parallel {
+    Summariser
+    FactChecker
+    Critic
+}
+-> Synthesiser
+```
+
+All experts in the block run concurrently. Each expert's output is available downstream
+as `{{ExpertName}}`. Failure model: if any expert fails, the whole block fails immediately
+— in-flight experts are cancelled via context propagation (Rob Pike / `errgroup` model).
+No best-effort or configurable mode.
+
+### Quality-convergence loop — `loop(N)`
+
+```fsharp
+mission BuildOperatorDesign(goal) loop(3) = {
+    KubernetesArchitect
+    -> SecurityArchitect
+    -> PrincipalReviewer
+    -> QualityJudge
+}
+```
+
+Reruns the full pipeline up to N times. The last step's `status: pass | fail` in the
+`StepEnvelope` controls the loop — if `pass`, exit early; if `fail` and attempts remain,
+retry. Platform-managed feedback injection: the runtime prepends a structured critique
+(Constitutional AI model: criterion, reason, suggestion) to the first expert's context on
+each retry. No developer action required.
+
+Research-backed default: `loop(2)` or `loop(3)`.
+
+### Multi-agent deliberation — `debate {}` *(separate phase)*
+
+```fsharp
+-> debate(rounds: 3) {
+    SecurityExpert
+    ArchitectExpert
+    CriticalReviewer
+}
+-> Synthesiser
+```
+
+Agents exchange outputs for N rounds (each reads all others' prior outputs). Synthesiser
+follows as the next pipeline step — no special parameter. Research-backed default:
+`rounds: 3`. Runtime warns if `rounds > 5` (diminishing returns / degradation beyond this
+point per Multi-Agent Debate paper).
+
+`debate {}` is a pipeline block like `parallel {}`. Both fan out to multiple experts;
+`parallel {}` is one-shot, `debate {}` is multi-round with cross-pollination.
+
+### Mission composition
+
+A mission is an expert at the interface level — it takes input and produces output. The
+caller does not know or care whether a step is a single LLM call or a full sub-pipeline.
+
+```fsharp
+mission CodeReview(codebase) loop(2) = {
+    Analyser
+    -> SecurityChecker
+    -> Synthesiser
+    -> QualityJudge
+}
+
+mission FullDevelopmentCycle(goal) = {
+    RequirementsAnalyst
+    -> CodeReview(codebase: goal)      ← mission as step, explicit binding
+    -> DeploymentPlanner
+}
+```
+
+**Explicit binding only.** Parameters are bound at the call site: `CodeReview(codebase: goal)`.
+Context inheritance (inner mission sees outer context bag) is rejected — leaky and implicit.
+
+Resolution order when a step name is encountered:
+
+```
+1. ./experts/<Name>/expert.md     ← leaf: single LLM call
+2. ./missions/<Name>.mcl          ← composite: sub-pipeline
+3. ~/.forge/cache/<Name>/         ← OCI (expert or mission)
+4. forge stdlib                   ← built-in experts only
+5. error[R002]: not found
 ```
 
 ## Syntax decisions
 
-### The `->` pipeline operator
+### `->` operator
 
-MCL uses `->` ("passes to") as the sequential composition operator.
+`|>` was considered (F# pipe-forward) but rejected: F# developers expect `f |> g` to mean
+`g(f)` — function composition — semantically different from expert composition. `->` carries
+no prior-art semantics.
 
-`->` is directional and neutral — a developer who has never seen MCL reads it correctly on first encounter. It means "the output of this step becomes the input of the next."
+### Braces everywhere — consistency over minimalism
 
-`|>` was considered (F# pipe-forward) but rejected: F# developers expect `f |> g` to mean `g(f)` — function composition — which is subtly different from expert composition. `->` carries no prior-art semantics and does not create a false analogy.
+Every scope has an explicit `{ }`. The mission body, `parallel {}`, `debate {}`, and
+`when()` all use explicit delimiters. Not whitespace-sensitive — the parser always knows
+scope boundaries. Rob Pike's argument: one rule, no special cases.
 
-### `parallel { }` block
+The `=` in `mission X = { }` is the assignment operator ("is defined as"), not a scope
+opener. Anders Hejlsberg's distinction was considered; consistency won at this stage.
 
-Parallelism is declared on the container, not inferred from an operator between items. Experts inside the block run concurrently. `->` before and after the block means the same thing it always does — sequential hand-off.
+### Named parameters with `:`
+
+`:` is the universal separator for named parameters — step context `(source: codebase)`,
+execution config `debate(rounds: 3)`, guard conditions `when(mode: "design")`.
+
+The `with { key = value }` construct is removed. `with` was doing semantic work (`=` for
+binding) that `:` now handles uniformly. Removing it eliminates a keyword and reduces
+syntax surface.
+
+### `using` for provider selection
+
+`using <identifier>` selects a `forge.toml` provider profile per step. `()` context
+remains purely domain. The two constructs are orthogonal — no reserved keys in context,
+no ambiguity.
 
 ```fsharp
-mission Analysis(input) =
-    DataExtractor
-    -> parallel {
-        Summariser
-        FactChecker
-        Critic
-    }
-    -> Synthesiser
+-> SecurityArchitect using architect(style: "terse")
 ```
-
-Each parallel expert's output is available in subsequent steps as `{{ExpertName}}` — the expert name is the variable name. The `as` keyword exists for the rare case where the same expert appears twice in one parallel block and names would collide; it is not needed in the common case.
-
-### F#-inspired, not F#
-
-MCL borrows F# aesthetic (clean, expression-oriented, minimal punctuation) but does not embed in F# and does not use F# semantics. The `->` operator means sequential reasoning hand-off, not function application.
 
 ### Capitalisation
 
 | Element | Convention | Reason |
 |---------|-----------|--------|
-| Keywords (`mission`, `expert`, `let`, `with`, `env`) | lowercase | Keywords are language machinery — they should recede visually. Matches every language convention: `if`, `for`, `class`. |
-| Expert identifiers (`KubernetesArchitect`) | PascalCase | Experts are proper nouns representing roles. PascalCase signals agency and creates immediate visual distinction from keywords. |
-| Variable identifiers (`goal`, `persona`) | camelCase | Variables are bindings, not roles — lowercase signals data rather than agent. |
+| Keywords (`mission`, `loop`, `when`, `using`, `parallel`, `debate`, `let`, `env`) | lowercase | Language machinery — recedes visually |
+| Expert/mission identifiers (`KubernetesArchitect`, `CodeReview`) | PascalCase | Proper nouns — signals agency |
+| Variable and parameter identifiers (`goal`, `codebase`, `mode`) | camelCase | Data, not agents |
 
-Both identifier conventions are enforced by the grammar, not style guidelines. A lowercase expert name or uppercase variable is a parse error.
+Both identifier conventions are enforced by the grammar. Wrong case is a parse error.
 
-### Variables and context
+## Variables and context
 
-`let` bindings declare constants that seed the context bag at mission start. The context bag
-(`Dictionary<string, object>`) is the OWIN `AppFunc` analogy: each expert reads what it needs
-and the `output` key carries the chained result forward.
+### `let` bindings
+
+Declare constants that seed the context bag at mission start. Domain variables only —
+infrastructure variables (`provider`, `apiKey`, `model`, `endpoint`) live in `forge.toml`.
 
 ```fsharp
-let goal    = "Design a production-grade K8s build operator"
-let apiKey  = env("OPENAI_API_KEY")           // read from process environment
-let model   = env("FML_MODEL", "gpt-4o-mini") // with default
-
-mission BuildOperator(goal) =
-    KubernetesArchitect
-    |> PrincipalReviewer with { style = "terse ADR" }
+let goal = env("GOAL_ENV")
+let version = "2.0"
 ```
-
-Expert system prompts use `{{key}}` placeholders interpolated from the context bag before each
-step runs.
-
-Variable resolution order (lowest → highest precedence):
-
-1. `let` binding
-2. `with { }` clause on a step
-3. `--var key=value` CLI flag
 
 ### Reserved context variables
 
-A small set of variables are injected by the runtime and available to every expert in every
-mission. They cannot be overridden by `let` bindings or `--var`.
+Injected by the runtime. Cannot be overridden.
 
 | Variable | Set by | Value |
 |----------|--------|-------|
-| `{{output}}` | Runtime, after each step | The previous step's text output. Empty string on the first step. |
-| `{{attempt}}` | Runtime, at the start of each loop iteration | Current attempt number, 1-based. Always `1` for missions without `loop`. |
-| `{{max_loops}}` | Runtime, from the mission's `loop N` declaration | Declared loop cap. Always `1` for missions without `loop`. |
-| `{{ExpertName}}` | Runtime, after each parallel step | Output of a named expert inside a `parallel { }` block. E.g. `{{Summariser}}`, `{{FactChecker}}`. Not set for sequential steps. |
-| `{{feedback}}` | Runtime, at the start of each loop iteration from attempt 2 onward | The Judge's structured failure reason from the previous iteration. Empty string on attempt 1. Enables deterministic convergence — each expert in the chain knows what failed and why. |
+| `{{output}}` | Runtime, after each step | Previous step's output. Empty string on first step. |
+| `{{attempt}}` | Runtime, loop iteration start | Current attempt number, 1-based. Always `1` without `loop`. |
+| `{{max_loops}}` | Runtime, from `loop(N)` | Declared loop cap. Always `1` without `loop`. |
+| `{{ExpertName}}` | Runtime, after each parallel step | Named output from a `parallel {}` expert. E.g. `{{Summariser}}`. |
 
-These are the only reserved variables. The set is intentionally minimal — everything else
-comes from `let` bindings or `--var`. A new reserved variable requires a language design
-decision, not just a runtime change.
+`{{feedback}}` is **not** a developer-facing variable. Platform-managed feedback injection
+handles loop convergence automatically — structured critique is prepended to the first
+expert's context on each retry. Expert prompts do not need to reference `{{feedback}}`.
 
-### Domain variables vs infrastructure variables
-
-Not all `let` bindings belong in `mission.mcl`. The rule is:
+### Domain vs infrastructure variables
 
 > **Would this variable appear in an expert's system prompt?**
-> - Yes → it is a domain variable. It belongs in `mission.mcl`.
-> - No → it is an infrastructure variable. It belongs in `forge.toml`.
+> - Yes → domain variable → `mission.mcl`
+> - No → infrastructure variable → `forge.toml`
 
-Domain variables (`goal`, `persona`, `product`) are reasoning inputs. They flow through the context bag and into expert prompts via `{{key}}` placeholders. They belong close to the mission that uses them.
+`goal`, `persona`, `codebase` are domain. `provider`, `apiKey`, `model`, `endpoint` are
+infrastructure. `mission.mcl` is a pure reasoning artifact — readable without knowing
+anything about the infrastructure running it.
 
-Infrastructure variables (`provider`, `apiKey`, `model`, `endpoint`) configure the LLM runtime. They never appear in a prompt. They belong in `forge.toml` as named provider profiles, not in the mission file.
+## Standard library
 
-This separation keeps `mission.mcl` a pure reasoning artifact — readable without knowing anything about the infrastructure running it.
+A small set of structural experts ship embedded in the `forge` binary. They require no
+declaration in `forge.toml` and are always available. See [`docs/design/stdlib.md`](stdlib.md)
+for the four gates that govern inclusion and the full member list.
 
-### Reserved binding names (infrastructure — moved to `forge.toml`)
+| Expert | Role | Load-bearing for |
+|--------|------|-----------------|
+| `Classifier` | Identifies interaction mode, emits routing signal | `when()` routing |
+| `ContextSummariser` | Compresses accumulated context | Long pipelines |
+| `QualityJudge` | Assesses output quality, returns `pass` or `fail` | `loop(N)` convergence |
+| `Synthesiser` | Merges parallel/debate outputs | `parallel {}`, `debate {}` fan-in |
 
-Provider configuration is declared in `forge.toml` as named profiles, not as `let` bindings in `mission.mcl`. See [Phase 25 — forge.toml](../phases/phase-25-spoke-2-forge-toml.md) for the schema.
+## Official OCI reference missions
 
-The four formerly-reserved binding names (`provider`, `apiKey`, `model`, `endpoint`) are no longer declared in `.mcl` files. They are infrastructure, not reasoning.
+Reusable reasoning workflows published by katasec. Not stdlib (missions are opinionated
+workflows — they fail the four gates). Pulled on demand, customised freely.
 
-Mission authors declare these as standard `let` bindings using `env()`. The canonical form:
-
-```fsharp
-let provider = env("MCL_PROVIDER", "openai")
-let apiKey   = env("MCL_API_KEY")
-let model    = env("MCL_MODEL", "gpt-4o-mini")
-// endpoint is omitted unless overriding the provider default
+```toml
+[experts]
+SDLCAgent = "ghcr.io/katasec/missions/sdlc-agent@1.0"
 ```
 
-The `env()` call is a convention, not a requirement — authors may hardcode values or use
-any env var name they choose. The canonical `MCL_*` names are the recommended defaults.
-
-Per-provider default endpoints are maintained in the runtime's provider lookup table (see
-`docs/phases/phase-17-provider-config.md`). Azure has no universal default — `endpoint`
-must be declared when `provider = "azure"`.
-
-### Strict subset
-
-The following constructs are explicitly excluded:
-
-- `type`, `module`, `open`
-- Lambdas, expressions (beyond string literals and env() calls)
-- Whitespace sensitivity
-- Type annotations
-- Match expressions
-- Mutable state
-
-Nothing is added to the language unless it clearly improves reasoning composition.
+| Mission | Description |
+|---------|-------------|
+| `sdlc-agent` | Classifier-router for software development: design, task, research, planning modes |
+| `design-workflow` | Iterative design with debate and quality convergence |
+| `research-chain` | Multi-source research with synthesis |
 
 ## One mission per file
 
-Every `.mcl` file encodes exactly one thinking model. This is not an observed pattern — it is a design constraint.
+Every `.mcl` file encodes exactly one thinking model. One file → one mission → one agent
+→ one endpoint. No disambiguation needed.
 
-A `.mcl` file is to a mission what an `expert.md` file is to an expert: one file, one unit. Allowing multiple missions per file would pull MCL toward being a module system, which is outside the language's scope.
+## Classifier-router pattern
 
-This constraint makes the agent mapping trivial: one `.mcl` → one mission → one agent → one endpoint. No disambiguation is needed.
-
-Note: a file may contain multiple `expert` declarations alongside the single `mission` — that is expected and correct. Only the number of `mission` declarations is constrained to one.
-
-## Recursive composition
-
-Experts can be composed from other experts, giving the language recursive decomposition:
+The stdlib `Classifier` expert combined with `when()` and mission composition enables
+clean interaction-mode routing:
 
 ```fsharp
-expert KubernetesArchitect =
-    RequirementsAnalyst
-    |> PlatformArchitect
-    |> ReliabilityArchitect
+mission SDLCAgent(input) = {
+    Classifier
+    -> DesignMode(input: input)    when(mode: "design")
+    -> TaskMode(input: input)      when(mode: "task")
+    -> ResearchMode(input: input)  when(mode: "research")
+    -> Planner                     when(else)
+}
 ```
 
-This means a high-level expert is itself a pipeline. The runtime resolves expert references recursively before execution.
+Each mode mission is independently testable and publishable. The routing mission is a
+pure table-of-contents. Context pollution between modes is eliminated — each mode
+mission has its own isolated context.
 
 ## What the language does not express
 
-The following are out of scope at the language level:
+The following are explicitly excluded:
 
-- Tool calls
-- Model provider selection (beyond `env("FML_MODEL")`)
-- Vector store configuration
-- Agent loop internals
-- DAG or branching syntax
+- Tool calls, function calls, shell commands
+- Type annotations (typed context bag is planned — Phase 22)
+- Match expressions, general branching, DAG execution
+- Unbounded loops
+- Whitespace sensitivity
+- Lambdas or closures
+- Mutable state
 
-Note: `loop N` on a mission declaration is in scope — it is a bounded retry up to N attempts
-until all steps pass. Unbounded loops, conditional branching, and DAG execution are not.
+Richer `when()` expressions (`>`, `or`, `contains`) are deferred until the typed context
+bag arrives. The grammar is designed to accommodate them as additive extensions.
 
-These live in the runtime layer or below. The language expresses only reasoning structure and
-the context that flows through it.
+Nothing is added to the language unless it clearly improves reasoning composition.

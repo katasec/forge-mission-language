@@ -18,18 +18,30 @@ public abstract record Declaration(string Name);
 public record MissionDeclaration(string Name, IReadOnlyList<string> Params, Pipeline Pipeline, int MaxLoops = 1)
     : Declaration(Name);
 
-public record OciSource(string Registry, string Version);
+// Pipeline is a sequence of elements — each element is a step or a parallel block.
+public record Pipeline(IReadOnlyList<PipelineElement> Elements);
 
-public record ExpertDeclaration(string Name, IReadOnlyList<string> Params, Pipeline? Pipeline, OciSource? Source = null)
-    : Declaration(Name);
+public abstract record PipelineElement;
+public record StepElement(Step Step) : PipelineElement;
+public record ParallelElement(IReadOnlyList<Step> Steps) : PipelineElement;
 
-public record Pipeline(IReadOnlyList<Step> Steps);
+// A step is a named expert/mission call with optional domain context, provider profile, and guard.
+public record Step(
+    string ExpertName,
+    IReadOnlyList<Binding> Context,   // (key: value) named parameters
+    string? Using,                    // using <profile> — provider profile selector
+    WhenClause? When);                // when() guard — null means unconditional
 
-public record Step(string ExpertName, IReadOnlyList<Binding> With);
+// When guard — abstract so new expression types are additive (Phase 22+)
+public abstract record WhenClause;
+public record StringEqualsWhen(string Key, string Value) : WhenClause;
+public record ElseWhen() : WhenClause;
 
+// Binding value types
 public abstract record BindingValue;
 public record StringBindingValue(string Text) : BindingValue;
 public record VarRefBindingValue(string Name) : BindingValue;
 public record EnvBindingValue(string VarName, string? DefaultValue) : BindingValue;
+public record NumberBindingValue(int Number) : BindingValue;
 
 public record Binding(string Key, BindingValue Value);
