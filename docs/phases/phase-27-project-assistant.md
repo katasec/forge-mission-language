@@ -215,3 +215,50 @@ self-hosting its own development workflow. The "what's next?" question that has
 been answered manually in every session becomes a mission invocation.
 
 That is the demonstration.
+
+---
+
+## Prior art — Netflix Headroom
+
+Headroom (https://headroom-docs.vercel.app/docs) operates in the same
+man-in-the-middle position as the forge agent but solves a complementary problem.
+
+**What Headroom does:** Sits between the AI client and the LLM and compresses
+everything the agent reads — tool outputs, logs, API responses, RAG results —
+before they reach the model. Three-stage transform pipeline:
+
+1. **Cache Aligner** — relocates dynamic content (dates, UUIDs, tokens) out of
+   system prompts so provider prompt caches can hit on repeated calls.
+2. **Smart Crusher** — content-aware statistical compression. Parses JSON arrays,
+   runs field-level variance analysis, selects representative subsets via the
+   Kneedle algorithm. Preserves anomalies and errors. Saves 60–95% of tokens
+   depending on content type.
+3. **Context Manager** — ensures messages fit the model's context window via
+   rolling window or intelligent scoring across six dimensions.
+
+Compressed content goes into a local SQLite CCR (Compress-Cache-Retrieve) store.
+The model gets a `ccr_retrieve` tool to fetch originals when it needs depth.
+Production example: 87.6% token reduction (10,144 → 1,260 tokens), identical
+accuracy, critical anomalies preserved without keyword matching.
+
+**Integration modes:** transparent proxy (URL change only), SDK wrapper
+(`HeadroomClient`), or framework adapters (LangChain, Vercel AI SDK, LiteLLM, MCP).
+
+**How it relates to the forge agent:**
+
+| | Headroom | forge agent |
+|---|---|---|
+| Position | Between client and LLM | Between client and LLM |
+| Intercepts | Context / token volume | Request intent |
+| Applies | Compression, cache alignment, retrieval | Expert routing, reasoning structure |
+| Optimises for | Token efficiency, latency, cost | Response quality, reasoning depth |
+| Layer | Infrastructure | Thinking model |
+
+They are **complementary, not competing.** A production stack could run both:
+Headroom upstream (compress what goes in, align for caching) and the forge agent
+downstream (structure how the model reasons about it). Neither overlaps the other's
+concern.
+
+When evaluating deployment options for Phase 27, consider whether Headroom's
+proxy mode belongs in the stack between Claude Code and the forge agent, or
+between the forge agent and the underlying LLM provider.
