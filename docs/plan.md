@@ -32,12 +32,13 @@
 | [Phase 25 Pre-flight — Open Design Decisions](phases/phase-25-preflight-design-decisions.md) | Eleven design decisions resolved: error messages, versioning, parallel failure, context accumulation, provider ambiguity, mission metadata, Hejlsberg/Pike review, `when()` conditional, loop convergence, syntax consolidation, mission composition. Blocking gate for Phase 25. | Next |
 | [Phase 25 — Language & Manifest Evolution](phases/phase-25-language-manifest-evolution.md) | `->` operator, `parallel {}` block, `forge.toml` manifest, expert resolution (local-first), provider profiles. Two-file model: `mission.mcl` + `forge.toml`. Hub + 6 spokes. | Blocked on Pre-flight |
 | [Phase 26 — Tooling Foundation](phases/phase-26-tooling-foundation.md) | Source positions on AST nodes, TextMate grammar (syntax highlighting), Tree-sitter grammar (incremental parsing), LSP server (completion, hover, go-to-definition). After grammar stabilises in Phase 25. Hub + 4 spokes. | Todo |
+| [Phase 27 — Project Assistant Missions](phases/phase-27-project-assistant.md) | Three-layer mission composition: `project-assistant` (generic hub/spoke ops), `software-project-assistant` (extends with architect + developer modes), `product-owner-assistant` (extends with PO-specific experts). Served behind `forge serve` and pointed at by Claude Code — MCL intercepts every request and routes it through the right expert chain. Self-hosting demonstration. | Design |
 
 ## Under discussion
 
 | Topic | Description |
 |-------|-------------|
-| Mission Composition | Missions usable as steps in other missions — explicit parameter binding, resolution order update, OCI mission publishing. Design decided in pre-flight Decision 11; needs a dedicated implementation phase. Planned reference example: [SDLC Meta-Mission](design/sdlc-meta-mission.md). |
+| Mission Composition | Missions usable as steps in other missions — explicit parameter binding, resolution order update, OCI mission publishing. Design decided in pre-flight Decision 11; needs a dedicated implementation phase. Planned reference example: [SDLC Meta-Mission](design/sdlc-meta-mission.md). Blocking dependency for Phase 27 composed version. |
 | Multi-Agent Debate (`debate {}` block) | Round orchestration, per-round context summarisation, cross-agent output wiring. Deferred from Phase 25; needs a dedicated phase. Research-backed default: rounds: 3, warn beyond 5. |
 | Skills and Tools | Review hub/spoke architecture for expert-level tool-calling support (function calls, MCP tools, shell commands). Decide scope, grammar extension, and AOT-safe dispatch before committing to an implementation phase. |
 | Parallel steps runtime model | Decide whether parallel steps use Task.WhenAll (simple) or a channel-based streaming approach (better for token streaming). Consider cancellation on first failure. |
