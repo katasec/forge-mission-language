@@ -3,7 +3,7 @@ experts:
   PitchCritic:
     source: experts
     path: experts/PitchCritic/expert.md
-    hash: fdafe257dc4b6b2f34a720641facc9c27e8de92eee1a3e90d526dd8d42b35ec9
+    hash: a55a4bc3b117342f73cb9b3eab40cc4365ee4d515e50f6640058c0f9e6678dea
   PitchDrafter:
     source: experts
     path: experts/PitchDrafter/expert.md
