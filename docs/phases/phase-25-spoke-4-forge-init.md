@@ -1,6 +1,6 @@
 # Phase 25 — Spoke 4: forge init
 
-## Status: Todo
+## Status: Done
 
 ## Behaviour
 

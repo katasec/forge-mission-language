@@ -28,7 +28,7 @@ missions/build-operator/
 | [Spoke 1 — Grammar](phase-25-spoke-1-grammar.md) | `->` operator, `parallel {}` block, `anyKey` rule for keyword-as-binding-key, remove OCI syntax from `.mcl` | Done |
 | [Spoke 2 — forge.toml](phase-25-spoke-2-forge-toml.md) | TOML manifest schema, hand-rolled AOT-safe parser, validation | Done |
 | [Spoke 3 — Expert Resolution](phase-25-spoke-3-expert-resolution.md) | Local-first, global cache fallback, SHA256 hash verification, `--verbose` flag | Done |
-| [Spoke 4 — forge init](phase-25-spoke-4-forge-init.md) | Read experts from `forge.toml`, populate `~/.forge/experts/`, write `mcl.lock` | Todo |
+| [Spoke 4 — forge init](phase-25-spoke-4-forge-init.md) | Read experts from `forge.toml`, populate `~/.forge/experts/`, write `mcl.lock` | Done |
 | [Spoke 5 — Provider Profiles](phase-25-spoke-5-provider-profiles.md) | Named profiles, per-step `with { provider = "name" }` resolution | Todo |
 | [Spoke 6 — Docs](phase-25-spoke-6-docs.md) | Update language.md, README.md, architecture.md | Todo |
 

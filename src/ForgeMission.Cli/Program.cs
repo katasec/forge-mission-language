@@ -53,16 +53,14 @@ static Command BuildInitCommand()
         var ast = TryParse(source);
         if (ast is null) return;
 
-        Console.WriteLine("Resolving experts...\n");
-
         ForgeManifest? manifest = null;
         try { manifest = ForgeTomlReader.TryRead(mission.FullName); }
         catch (ForgeTomlException ex) { Die(ex.Message); return; }
 
-        var lockFile = new LockFile();
+        Console.WriteLine("Resolving experts...\n");
 
         // --- Local experts: discover from ./experts
-        var localCatalog = new Dictionary<string, ResolvedExpert>(StringComparer.Ordinal);
+        var localCatalog    = new Dictionary<string, ResolvedExpert>(StringComparer.Ordinal);
         var localExpertsDir = Path.Combine(missionDir, SourceResolver.DefaultExpertsDir);
         if (Directory.Exists(localExpertsDir))
         {
@@ -70,28 +68,41 @@ static Command BuildInitCommand()
             catch (MclException ex) { Die(ex.Message); return; }
         }
 
-        // Build lock file with hashes from local catalog (OCI entries added when Spoke 4 lands)
-        lockFile = LockFileIO.Build(localCatalog, missionDir);
+        // Build lock file from local experts
+        var lockFile = LockFileIO.Build(localCatalog, missionDir);
 
-        // Report OCI experts declared in forge.toml (pulling is not yet implemented)
+        foreach (var (name, entry) in lockFile.Experts.OrderBy(k => k.Key))
+            Console.WriteLine($"  ✓ {name,-30} local    {entry.Path}");
+
+        // --- OCI experts: pull from registry and add to lock file
         if (manifest?.Experts.Count > 0)
         {
-            Console.WriteLine($"  ! OCI experts declared in forge.toml (pulling not yet implemented):");
-            foreach (var (name, oci) in manifest.Experts.OrderBy(k => k.Key))
-                Console.WriteLine($"    {name,-30} {oci}");
-            Console.WriteLine();
+            foreach (var (name, ociRef) in manifest.Experts.OrderBy(k => k.Key))
+            {
+                try
+                {
+                    var (cachePath, status) = await OciExpertPuller.PullAsync(ociRef, refresh);
+                    var lockPath2           = OciExpertPuller.ToLockPath(cachePath);
+                    var hash                = LockFileIO.ComputeHash(cachePath);
+                    lockFile.Experts[name]  = new LockFileExpert { Source = "oci", Path = lockPath2, Hash = hash };
+                    Console.WriteLine($"  ✓ {name,-30} {status,-8} {ociRef}");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"  ✗ {name,-30} failed   {ociRef}");
+                    Console.Error.WriteLine($"    {ex.Message}");
+                    Console.Error.WriteLine("    Run 'forge login <registry> --token <PAT>' if this is an auth error.");
+                    Die($"MCL011 OCI pull failed for '{name}'.");
+                    return;
+                }
+            }
         }
-
-        var totalCount = lockFile.Experts.Count;
-        Console.WriteLine($"\n  ✓ experts  ({totalCount} found)");
-        Console.WriteLine("\nResolved:");
-        foreach (var (name, entry) in lockFile.Experts.OrderBy(k => k.Key))
-            Console.WriteLine($"  {name,-30} {entry.Source}");
 
         var lockPath = Path.Combine(missionDir, "mcl.lock");
         LockFileIO.Write(lockPath, lockFile);
 
-        Console.WriteLine($"\nGenerated {lockPath}");
+        var total = lockFile.Experts.Count;
+        Console.WriteLine($"\nmcl.lock written ({total} expert{(total == 1 ? "" : "s")}). Run 'forge run' to execute the mission.");
     });
 
     return cmd;
