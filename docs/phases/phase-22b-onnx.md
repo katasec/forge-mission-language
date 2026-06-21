@@ -1,6 +1,6 @@
 # Phase 22b — ONNX Expert Kind
 
-> **Status: In Progress (Spokes 1–4 Done, Spoke 5 Todo)**  
+> **Status: In Progress (Spokes 1–4 Done, Spokes 5–6 Todo)**  
 > **Depends on:** Phase 22a (kind dispatch, HttpExpertRunner) — Done  
 > **Blocks:** UC-3 (Log Anomaly Detection) demo mission  
 > **Context:** This is the second half of Phase 22. Phase 22a shipped `kind: http` and
@@ -192,9 +192,66 @@ Note: unit tests for `OnnxExpertRunner` require a real `.onnx` file. The UC-3 de
 
 ### Spoke 5 — Single Binary Decision + Release Update
 
-Based on Spoke 1 findings, implement the chosen option (A/B/C). Update the GitHub
-Actions release workflow to bundle `libonnxruntime` alongside `forge` if Option A.
-Update README and `docs/design/language.md` to document `kind: onnx`.
+Decision from Spoke 1: Option A. Release workflow must be updated to zip
+`forge` + `libonnxruntime.{dylib,so,dll}` per platform into a single archive.
+`language.md` already documents `kind: onnx` (done in Spoke 4 session).
+README update and GHA workflow zip step still outstanding.
+
+### Spoke 6 — kind: json_extract (Feature Injection Bridge)
+
+**Motivation:** `OnnxExpertRunner` reads named float features from the context bag
+by key. But there is no built-in mechanism to take an LLM step's JSON output and
+inject individual fields as separate context bag keys. Without this, the only way
+to feed ONNX is via hard-coded `with()` mission parameter bindings — which is
+impractical for real pipelines.
+
+**What it does:** A new expert kind `kind: json_extract` parses `context["output"]`
+as JSON and injects each top-level key as a context bag entry. No model, no HTTP call,
+no system prompt — purely structural.
+
+```markdown
+---
+name: ExtractFeatures
+input: JSON object with float features
+output: Individual context bag entries
+kind: json_extract
+---
+```
+
+The expert frontmatter body (system prompt) is unused. The runner reads
+`context["output"]`, calls `JsonDocument.Parse`, iterates `RootElement.EnumerateObject()`,
+and writes each property into the context bag:
+- `JsonValueKind.Number` → stored as `double`
+- `JsonValueKind.String` → stored as `string`
+- `JsonValueKind.True`/`False` → stored as `string` ("True"/"False")
+
+`ExpertDefinition` gains `IsJsonExtract` predicate (`Kind == "json_extract"`).
+`ExpertLoader` validation: no extra required fields for `kind: json_extract`.
+`PipelineRunner` kind dispatch: `"json_extract" => new JsonExtractExpertRunner()`.
+
+**Full pipeline enabled by this:**
+
+```fsharp
+mission ContentQuality(text) = {
+    FeatureExtractor      // kind:llm — outputs {"word_count": 245, "avg_sentence_len": 18.3}
+    -> ExtractFeatures    // kind:json_extract — injects word_count, avg_sentence_len into context
+    -> QualityScorer      // kind:onnx — reads word_count + avg_sentence_len as floats, scores quality
+    -> Explainer          // kind:llm — reads {{quality_score}}, explains the result
+}
+```
+
+**AOT:** `JsonDocument.Parse` / `JsonElement.EnumerateObject()` is STJ — fully AOT-safe.
+No source-gen context needed for dynamic JSON traversal (we read raw `JsonElement`, no
+deserialization to a typed object).
+
+**Tests:**
+- JSON with numeric fields → doubles written to context
+- JSON with string fields → strings written to context
+- Invalid JSON → `JsonException` propagates as step failure
+- Downstream ONNX step reads injected keys correctly (integration)
+
+**Note:** This spoke was identified as a gap when designing the Phase 29 Option B demo
+(text → ONNX pipeline). It must land before the demo mission can be built.
 
 ---
 
