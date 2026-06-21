@@ -24,6 +24,7 @@
     <ProjectReference Include="..\ForgeMission.Core\ForgeMission.Core.csproj" />
     <ProjectReference Include="..\ForgeMission.Parser\ForgeMission.Parser.csproj" />
     <ProjectReference Include="..\..\..\..\progs\oai-server-dotnet\src\Katasec.OaiServer\Katasec.OaiServer.csproj" />
+    <ProjectReference Include="..\..\..\..\progs\oai-server-dotnet\src\Katasec.AnthropicServer\Katasec.AnthropicServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

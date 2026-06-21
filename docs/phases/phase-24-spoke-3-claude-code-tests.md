@@ -1,6 +1,6 @@
 # Phase 24 — Spoke 3: Claude Code Integration Tests
 
-**Status:** Planned  
+**Status:** Done — test passing  
 **Hub:** [phase-24-copilot-sdk-integration-tests.md](phase-24-copilot-sdk-integration-tests.md)  
 **Depends on:** Spoke 1 (test harness)  
 **Parallel with:** Spoke 2  
