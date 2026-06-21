@@ -15,8 +15,9 @@ public record ExpertDefinition(
     string OutputKey = "",
     string Threshold = "")
 {
-    public bool IsJudge => Role.Equals("judge", StringComparison.OrdinalIgnoreCase);
-    public bool IsHttp  => Kind.Equals("http",  StringComparison.OrdinalIgnoreCase);
-    public bool IsRule  => Kind.Equals("rule",  StringComparison.OrdinalIgnoreCase);
-    public bool IsOnnx  => Kind.Equals("onnx",  StringComparison.OrdinalIgnoreCase);
+    public bool IsJudge       => Role.Equals("judge",        StringComparison.OrdinalIgnoreCase);
+    public bool IsHttp        => Kind.Equals("http",          StringComparison.OrdinalIgnoreCase);
+    public bool IsRule        => Kind.Equals("rule",          StringComparison.OrdinalIgnoreCase);
+    public bool IsOnnx        => Kind.Equals("onnx",          StringComparison.OrdinalIgnoreCase);
+    public bool IsJsonExtract => Kind.Equals("json_extract",  StringComparison.OrdinalIgnoreCase);
 }

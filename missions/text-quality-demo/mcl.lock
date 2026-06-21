@@ -1,0 +1,18 @@
+version: 1
+experts:
+  FeatureExtractor:
+    source: experts
+    path: experts/FeatureExtractor/expert.md
+    hash: d9d648c46e74b77e053e2beee181bc14c5ec6c56549e6557025c6cd93b520475
+  ExtractFeatures:
+    source: experts
+    path: experts/ExtractFeatures/expert.md
+    hash: bba7ae84375d2a13934626e734dacc72c55b6bf9186b7d4c2477b289c9dc0410
+  QualityScorer:
+    source: experts
+    path: experts/QualityScorer/expert.md
+    hash: 8de7c4dbc2cfa29e02d1773f0c47ff7f65341cfe40f41afb6db3853be69fce0c
+  Explainer:
+    source: experts
+    path: experts/Explainer/expert.md
+    hash: d1e3801d213ddcda3deb3ce9f147c396a2fac7ed100d8fa0b267f5e084063bec

@@ -484,6 +484,39 @@ mission LogAnomalyDetection(log_line) = {
 }
 ```
 
+### `kind: json_extract`
+
+`kind: json_extract` bridges the gap between an LLM step's JSON output and downstream non-LLM steps (typically `kind: onnx`) that read named numeric values from the context bag. It parses `context["output"]` as JSON and injects each top-level key directly into the context bag as a typed value — no model, no HTTP call, no system prompt.
+
+```markdown
+---
+name: ExtractFeatures
+input: JSON object with numeric and string fields
+output: Individual context bag entries
+kind: json_extract
+---
+```
+
+The expert frontmatter body (system prompt) is unused. The runner reads `context["output"]`, calls `JsonDocument.Parse`, iterates `RootElement.EnumerateObject()`, and writes each property:
+
+- `JsonValueKind.Number` → stored as `double`
+- Any other kind → stored as `string` (via `JsonElement.ToString()`)
+
+If `context["output"]` is not valid JSON, a `JsonException` propagates and the step fails.
+
+**Full LLM → json_extract → onnx → LLM pipeline:**
+
+```fsharp
+mission ContentQuality(text) = {
+    FeatureExtractor      // kind:llm — outputs {"word_count": 245, "avg_sentence_length": 18.3}
+    -> ExtractFeatures    // kind:json_extract — injects word_count, avg_sentence_length into context
+    -> QualityScorer      // kind:onnx — reads word_count + avg_sentence_length as floats, writes quality_score
+    -> Explainer          // kind:llm — reads {{quality_score}}, explains the result
+}
+```
+
+The injected keys are immediately available to all subsequent steps via `{{key}}` interpolation. Because numbers are stored as `double`, the `OnnxExpertRunner` can read them without conversion friction, and LLM steps get a human-readable decimal string automatically via `.ToString()`.
+
 ## Standard library
 
 A small set of structural experts ship embedded in the `forge` binary. They require no

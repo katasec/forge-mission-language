@@ -200,10 +200,11 @@ public class PipelineRunner
 
         var runner = expert.Kind switch
         {
-            "http" => (IExpertRunner)new HttpExpertRunner(),
-            "rule" => new RuleExpertRunner(),
-            "onnx" => new OnnxExpertRunner(),
-            _      => ResolveRunner(step.Using)
+            "http"         => (IExpertRunner)new HttpExpertRunner(),
+            "rule"         => new RuleExpertRunner(),
+            "onnx"         => new OnnxExpertRunner(),
+            "json_extract" => new JsonExtractExpertRunner(),
+            _              => ResolveRunner(step.Using)
         };
 
         if (options.StepWriter is { } sw)
@@ -285,10 +286,11 @@ public class PipelineRunner
 
         var runner = expert.Kind switch
         {
-            "http" => (IExpertRunner)new HttpExpertRunner(),
-            "rule" => new RuleExpertRunner(),
-            "onnx" => new OnnxExpertRunner(),
-            _      => ResolveRunner(step.Using)
+            "http"         => (IExpertRunner)new HttpExpertRunner(),
+            "rule"         => new RuleExpertRunner(),
+            "onnx"         => new OnnxExpertRunner(),
+            "json_extract" => new JsonExtractExpertRunner(),
+            _              => ResolveRunner(step.Using)
         };
 
         var envelope = await runner.RunAsync(expert, localContext, cts.Token);
