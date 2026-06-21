@@ -288,6 +288,74 @@ public class ExpertLoaderTests : IDisposable
     }
 
     // ---------------------------------------------------------------------------
+    // kind: onnx validation
+
+    private static string OnnxExpertMarkdown(
+        string? model     = "./models/iso.onnx",
+        string? inputs    = "cpu,mem",
+        string? outputKey = "score",
+        string? threshold = "0.85") =>
+        $"""
+        ---
+        name: AnomalyDetector
+        input: Normalised metric features
+        output: Anomaly score
+        kind: onnx
+        {(model     is not null ? $"model: {model}"         : "")}
+        {(inputs    is not null ? $"inputs: {inputs}"       : "")}
+        {(outputKey is not null ? $"outputKey: {outputKey}" : "")}
+        {(threshold is not null ? $"threshold: {threshold}" : "")}
+        ---
+        Detect anomalies.
+        """;
+
+    [Fact]
+    public void OnnxExpert_ValidFrontmatter_ParsesAllFields()
+    {
+        WriteDirExpert("AnomalyDetector", OnnxExpertMarkdown());
+        var experts = new ExpertLoader(_dir).LoadAll();
+        var def = experts["AnomalyDetector"];
+        Assert.Equal("onnx", def.Kind, ignoreCase: true);
+        Assert.Equal("./models/iso.onnx", def.Model);
+        Assert.Equal("cpu,mem", def.Inputs);
+        Assert.Equal("score", def.OutputKey);
+        Assert.Equal("0.85", def.Threshold);
+        Assert.True(def.IsOnnx);
+    }
+
+    [Fact]
+    public void OnnxExpert_MissingModel_Throws()
+    {
+        WriteDirExpert("AnomalyDetector", OnnxExpertMarkdown(model: null));
+        var ex = Assert.Throws<ExpertLoadException>(() => new ExpertLoader(_dir).LoadAll());
+        Assert.Contains("model", ex.Message);
+    }
+
+    [Fact]
+    public void OnnxExpert_MissingInputs_Throws()
+    {
+        WriteDirExpert("AnomalyDetector", OnnxExpertMarkdown(inputs: null));
+        var ex = Assert.Throws<ExpertLoadException>(() => new ExpertLoader(_dir).LoadAll());
+        Assert.Contains("inputs", ex.Message);
+    }
+
+    [Fact]
+    public void OnnxExpert_MissingOutputKey_Throws()
+    {
+        WriteDirExpert("AnomalyDetector", OnnxExpertMarkdown(outputKey: null));
+        var ex = Assert.Throws<ExpertLoadException>(() => new ExpertLoader(_dir).LoadAll());
+        Assert.Contains("outputKey", ex.Message);
+    }
+
+    [Fact]
+    public void OnnxExpert_MissingThreshold_Throws()
+    {
+        WriteDirExpert("AnomalyDetector", OnnxExpertMarkdown(threshold: null));
+        var ex = Assert.Throws<ExpertLoadException>(() => new ExpertLoader(_dir).LoadAll());
+        Assert.Contains("threshold", ex.Message);
+    }
+
+    // ---------------------------------------------------------------------------
     // Lock file loading
 
     [Fact]

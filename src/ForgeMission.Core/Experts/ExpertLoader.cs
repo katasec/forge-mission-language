@@ -118,8 +118,19 @@ public class ExpertLoader(string expertsDirectory)
             throw new ExpertLoadException($"Expert '{meta.Name}' has kind:http but is missing required field 'endpoint'.");
         if (meta.Kind.Equals("rule", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(meta.Check))
             throw new ExpertLoadException($"Expert '{meta.Name}' has kind:rule but is missing required field 'check'.");
+        if (meta.Kind.Equals("onnx", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(meta.Model))
+                throw new ExpertLoadException($"Expert '{meta.Name}' has kind:onnx but is missing required field 'model'.");
+            if (string.IsNullOrWhiteSpace(meta.Inputs))
+                throw new ExpertLoadException($"Expert '{meta.Name}' has kind:onnx but is missing required field 'inputs'.");
+            if (string.IsNullOrWhiteSpace(meta.OutputKey))
+                throw new ExpertLoadException($"Expert '{meta.Name}' has kind:onnx but is missing required field 'outputKey'.");
+            if (string.IsNullOrWhiteSpace(meta.Threshold))
+                throw new ExpertLoadException($"Expert '{meta.Name}' has kind:onnx but is missing required field 'threshold'.");
+        }
 
-        return new ExpertDefinition(meta.Name, meta.Input, meta.Output, body.Trim(), meta.Role, meta.Kind, meta.Endpoint, meta.Check, meta.OnFail);
+        return new ExpertDefinition(meta.Name, meta.Input, meta.Output, body.Trim(), meta.Role, meta.Kind, meta.Endpoint, meta.Check, meta.OnFail, meta.Model, meta.Inputs, meta.OutputKey, meta.Threshold);
     }
 
     private static (string Frontmatter, string Body) SplitFrontmatter(string path, string content)
@@ -146,13 +157,17 @@ public class ExpertLoader(string expertsDirectory)
 
     private class ExpertFrontmatter
     {
-        public string Name     { get; set; } = "";
-        public string Input    { get; set; } = "";
-        public string Output   { get; set; } = "";
-        public string Role     { get; set; } = "";
-        public string Kind     { get; set; } = "llm";
-        public string Endpoint { get; set; } = "";
-        public string Check    { get; set; } = "";
-        public string OnFail   { get; set; } = "";
+        public string Name      { get; set; } = "";
+        public string Input     { get; set; } = "";
+        public string Output    { get; set; } = "";
+        public string Role      { get; set; } = "";
+        public string Kind      { get; set; } = "llm";
+        public string Endpoint  { get; set; } = "";
+        public string Check     { get; set; } = "";
+        public string OnFail    { get; set; } = "";
+        public string Model     { get; set; } = "";
+        public string Inputs    { get; set; } = "";
+        public string OutputKey { get; set; } = "";
+        public string Threshold { get; set; } = "";
     }
 }

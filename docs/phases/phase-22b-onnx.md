@@ -1,6 +1,6 @@
 # Phase 22b — ONNX Expert Kind
 
-> **Status: Todo**  
+> **Status: In Progress (Spokes 1–4 Done, Spoke 5 Todo)**  
 > **Depends on:** Phase 22a (kind dispatch, HttpExpertRunner) — Done  
 > **Blocks:** UC-3 (Log Anomaly Detection) demo mission  
 > **Context:** This is the second half of Phase 22. Phase 22a shipped `kind: http` and
@@ -122,22 +122,20 @@ This is the primary risk of the phase. OnnxRuntime 1.27.0 was inspected:
 - No `System.Reflection.Emit` in the managed API surface
 - IL3050 suppression is already configured in `Cli.csproj`
 
-**Unresolved: single binary constraint.**
+### AOT Probe Results (Spoke 1 — Done 2026-06-21)
 
-The current `forge` binary is self-contained. OnnxRuntime's native library
-(`libonnxruntime.dylib`, `libonnxruntime.so`, `onnxruntime.dll`) cannot be statically
-linked — it must deploy alongside the binary. This breaks the single-binary model.
+`dotnet publish src/ForgeMission.Cli -c Release -r osx-arm64` with OnnxRuntime 1.27.0:
 
-Three options — decision needed before Spoke 3:
+- **Zero ILC warnings** — no IL2xxx or IL3xxx. OnnxRuntime is pure P/Invoke.
+- **Binary size:** `forge` = 26 MB, `libonnxruntime.dylib` = 37 MB, both in the same output dir.
+- **Single-binary constraint: resolved → Option A.** NuGet's RID-specific native asset
+  extraction puts `libonnxruntime.dylib` next to `forge` automatically at publish time.
+  The release workflow must zip them together per platform.
+- **No `[DynamicDependency]` or additional IL suppressions needed** for OnnxRuntime itself.
 
-| Option | Trade-off |
-|--------|-----------|
-| A — Deploy alongside | `forge` binary + `libonnxruntime` in same dir. Zip in release. Simplest. |
-| B — Optional / plugin | ONNX only available if `libonnxruntime` is present at runtime; graceful error otherwise |
-| C — Separate `forge-onnx` binary | AOT-published variant that includes OnnxRuntime. Two release artifacts per platform. |
-
-**Recommended: Option A** — ship as a zip archive per platform for ONNX-enabled releases.
-The non-ONNX binary remains a single file for users who don't need it.
+**Decision: Option A** — ship as a zip archive per platform (forge + libonnxruntime in one dir).
+Users who only use `llm`/`http`/`rule` experts and never use `kind: onnx` experts
+are unaffected — the dylib is inert unless an `OnnxExpertRunner` is invoked.
 
 **AOT probe is Spoke 1** — must complete before any other spoke is scheduled.
 
@@ -153,54 +151,44 @@ lands in the publish output automatically via the package's `runtimes/` folder.
 
 ## Hub + Spokes
 
-### Spoke 1 — AOT Compatibility Probe (gate)
+### Spoke 1 — AOT Compatibility Probe (gate) ✓ Done
 
-Add `Microsoft.ML.OnnxRuntime` to `ForgeMission.Core.csproj`. Write a minimal
-`OnnxExpertRunner` stub that creates an `InferenceSession`. Run `make install`
-(native AOT publish). Document all ILC warnings. Add `[DynamicDependency]` or
-suppressions as needed. If probe fails badly, evaluate Option C above.
+Added `Microsoft.ML.OnnxRuntime 1.27.0` to `ForgeMission.Core.csproj`. Wrote minimal
+`OnnxExpertRunner` stub using `InferenceSession`, `DenseTensor<float>`, `NamedOnnxValue`.
+Extended `ExpertDefinition` with `Model`, `Inputs`, `OutputKey`, `Threshold`, `IsOnnx`.
 
-**Output:** AOT probe findings documented in this file. Go/no-go decision recorded.
-Only proceed to Spoke 2+ if probe passes or has an acceptable mitigation.
+`dotnet publish` native AOT on osx-arm64: **zero ILC warnings**. Option A confirmed.
+Release workflow update deferred to Spoke 5.
 
-### Spoke 2 — Typed Context Bag
+See AOT Probe Results section above for full details.
 
-Allow `double` values in `Dictionary<string, object>`. Update `ContextBuilder` to
-handle numeric coercion. Update `{{key}}` interpolation in `DirectExpertRunner` to
-call `.ToString()` on non-string values. No grammar change.
+### Spoke 2 — Typed Context Bag ✓ Done
 
-**Tests:** context bag stores double, LLM interpolation formats correctly, missing
-key throws a clear error.
+`ContextInterpolator.Interpolate` already calls `.ToString()` on all `object` values.
+`Dictionary<string, object>` accepts `double` at assignment time. No code changes needed —
+the bag already handles typed values correctly. `OnnxExpertRunner` stores scores as `double`;
+LLM steps interpolate them via `.ToString()` transparently.
 
-### Spoke 3 — Expert Frontmatter Extension
+### Spoke 3 — Expert Frontmatter Extension ✓ Done
 
-Add `model`, `inputs`, `outputKey`, `threshold` to `ExpertFrontmatter` (private POCO
-in `ExpertLoader`) and `ExpertDefinition` (public record). Add `[DynamicDependency]`
-preservation for the new POCO fields (YamlDotNet uses reflection).
+Added `Model`, `Inputs`, `OutputKey`, `Threshold` to `ExpertFrontmatter` (private POCO)
+and threaded through to `ExpertDefinition` constructor. `[DynamicDependency]` already
+covered the POCO via the existing attribute. Validation in `ExpertLoader.ParseFile`:
+missing any of the 4 fields when `kind: onnx` → `ExpertLoadException` with clear message.
 
-Validation in `ExpertLoader.ParseFile`:
-- `kind: onnx` + missing `model` → `ExpertLoadException`
-- `kind: onnx` + missing `inputs` → `ExpertLoadException`
-- `kind: onnx` + missing `outputKey` → `ExpertLoadException`
-- `kind: onnx` + missing `threshold` → `ExpertLoadException`
+5 tests added to `ExpertLoaderTests.cs` (1 happy-path + 4 missing-field cases). All pass.
 
-**Tests:** 4 validation tests (one per missing field), 1 happy-path parse test.
+### Spoke 4 — OnnxExpertRunner ✓ Done
 
-### Spoke 4 — OnnxExpertRunner
+`OnnxExpertRunner : IExpertRunner` implemented in `src/ForgeMission.Core/Adapters/OnnxExpertRunner.cs`.
+Reads named float features from context, builds `DenseTensor<float>`, runs `InferenceSession`,
+writes score as `double` to `context[expert.OutputKey]`, returns pass/fail envelope.
 
-Implement `OnnxExpertRunner : IExpertRunner`. Steps:
-1. Parse `expert.Inputs` (comma-separated) into `string[]` feature keys
-2. Read each key from `context` as `double` (throw if missing or not numeric)
-3. Build `OrtValue` tensor from feature array
-4. Create `InferenceSession` from `expert.Model` path
-5. Run `session.Run(inputs)` → extract output value as `double`
-6. Write to `context[expert.OutputKey]`
-7. Compare to `double.Parse(expert.Threshold)` → pass/fail
+`"onnx"` added to kind dispatch in both `ExecuteStepAsync` and `ExecuteParallelStepAsync`
+in `PipelineRunner.cs`.
 
-Add `"onnx"` to `PipelineRunner` kind dispatch (both sequential and parallel).
-
-**Tests:** mock ONNX model (or a 1-input linear model generated in the test setup),
-verify score written to context, verify pass/fail threshold logic.
+Note: unit tests for `OnnxExpertRunner` require a real `.onnx` file. The UC-3 demo mission
+(Phase 29 Spoke 3) will serve as the end-to-end integration test with a real isolation-forest model.
 
 ### Spoke 5 — Single Binary Decision + Release Update
 

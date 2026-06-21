@@ -202,6 +202,7 @@ public class PipelineRunner
         {
             "http" => (IExpertRunner)new HttpExpertRunner(),
             "rule" => new RuleExpertRunner(),
+            "onnx" => new OnnxExpertRunner(),
             _      => ResolveRunner(step.Using)
         };
 
@@ -286,6 +287,7 @@ public class PipelineRunner
         {
             "http" => (IExpertRunner)new HttpExpertRunner(),
             "rule" => new RuleExpertRunner(),
+            "onnx" => new OnnxExpertRunner(),
             _      => ResolveRunner(step.Using)
         };
 

@@ -368,6 +368,7 @@ Only one judge per pipeline is typical. Multiple judges are valid — any failin
 | `llm` *(default)* | Expert is an LLM call. System prompt is sent to the configured provider. |
 | `http` | Expert POSTs the context bag as JSON to `endpoint` and expects a `StepEnvelope` response. No system prompt sent. Requires `endpoint`. |
 | `rule` | Expert evaluates a deterministic `check` expression against the prior step's output. No LLM call. Requires `check`. |
+| `onnx` | Expert loads an ONNX model, reads named float features from the context bag, runs inference in-process, writes the score back to the bag. Requires `model`, `inputs`, `outputKey`, `threshold`. |
 
 `kind: rule` pushes determinism left. Structural checks that do not need AI judgment — word count, JSON validity, heading presence — should not consume LLM tokens. The rule either passes or fails instantly.
 
@@ -441,6 +442,47 @@ mission DraftWithLengthGate(topic) loop(3) = {
 ```
 
 On the first attempt `{{feedback}}` is empty. On retry it contains the `onFail` message. No developer plumbing required — the runtime carries it automatically.
+
+### `kind: onnx`
+
+`kind: onnx` embeds ML model inference directly in the pipeline. The model runs in-process — no HTTP roundtrip, no separate service to operate.
+
+```markdown
+---
+name: AnomalyDetector
+input: Normalised metric features
+output: Anomaly score and pass/fail decision
+kind: onnx
+model: ./models/isolation-forest.onnx
+inputs: cpu_usage, memory_usage, request_latency
+outputKey: anomaly_score
+threshold: 0.85
+---
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `model` | Yes | Path to the `.onnx` file, relative to the expert's directory |
+| `inputs` | Yes | Comma-separated list of context bag keys to read as float features. Prior steps must write these values. |
+| `outputKey` | Yes | Key written into the context bag with the inference score (`double`). Subsequent LLM steps can reference it via `{{outputKey}}`. |
+| `threshold` | Yes | Score above this value → `status: fail`. At or below → `status: pass`. |
+
+The score is stored as a `double` in the context bag. `ContextInterpolator` calls `.ToString()` automatically, so any downstream LLM step can reference `{{anomaly_score}}` in its prompt without special handling.
+
+**Deployment:** ONNX models require `libonnxruntime` alongside the `forge` binary. The release archive for ONNX-enabled deployments ships as a zip containing `forge` + `libonnxruntime.{dylib,so,dll}`. Users who only use `llm`, `http`, and `rule` experts are unaffected — the native library is inert unless an `OnnxExpertRunner` is invoked.
+
+**Integration with `loop(N)` and `kind: rule`:**
+
+Typical log-analysis pattern — a prior normalisation step writes float context values, the ONNX expert scores them, a downstream LLM expert explains what it found:
+
+```fsharp
+mission LogAnomalyDetection(log_line) = {
+    LogParser        // kind:llm — extracts cpu_usage, memory_usage, request_latency from the log line
+    -> AnomalyDetector  // kind:onnx — reads the three floats, writes anomaly_score
+    -> RootCauseAnalyst // kind:llm — reads {{anomaly_score}}, explains the anomaly
+    -> IncidentReporter // kind:llm — formats the incident report
+}
+```
 
 ## Standard library
 
