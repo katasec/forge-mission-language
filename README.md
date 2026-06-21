@@ -318,6 +318,8 @@ forge list experts                            // list local experts
 forge provider list                           // list supported providers
 forge provider scaffold <name>                // print a ready-to-paste forge.toml block
 
+forge serve                                   // expose the mission as an OpenAI-compatible endpoint
+
 forge agent start --agent-file <path>         // start agent container (Docker)
 forge agent stop  --agent-file <path>         // stop agent container
 forge webui start --agent-file <path>         // start Open WebUI connected to agent
