@@ -4,7 +4,8 @@ namespace ForgeMission.Core.Runtime;
 
 public static partial class ContextInterpolator
 {
-    [GeneratedRegex(@"\{\{(\w+)\}\}")]
+    // [\w.]+ allows dotted keys such as {{Optimist.output}} set by parallel blocks.
+    [GeneratedRegex(@"\{\{([\w.]+)\}\}")]
     private static partial Regex PlaceholderPattern();
 
     public static string Interpolate(string template, Dictionary<string, object> context)

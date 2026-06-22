@@ -204,9 +204,38 @@ is the minimum viable implementation; Option C is the most principled.
 
 ## Sources
 
+### Iterative refinement
 - [Self-Refine: Iterative Refinement with Self-Feedback (Madaan et al., NeurIPS 2023)](https://arxiv.org/abs/2303.17651)
 - [Reflexion: Language Agents with Verbal Reinforcement Learning (Shinn et al., NeurIPS 2023)](https://arxiv.org/abs/2303.11366)
+
+### Multi-agent pipelines and composition
 - [Improving Language Model Negotiation with Self-Play and In-Context Learning from AI Feedback — Multi-Agent Debate (Du et al., 2023)](https://arxiv.org/abs/2401.05998)
-- [Constitutional AI: Harmlessness from AI Feedback (Bai et al., Anthropic 2022)](https://arxiv.org/pdf/2212.08073)
+- [Mixture-of-Agents Enhances Large Language Model Capabilities (Wang et al., 2024)](https://arxiv.org/abs/2406.04692)
 - [Composition of Experts: A Modular Compound AI System (2024)](https://arxiv.org/pdf/2412.01868)
+- [Symbolic Mixture-of-Experts: Adaptive Skill-based Routing for Heterogeneous Reasoning (2025)](https://arxiv.org/pdf/2503.05641)
+- [The Shift from Models to Compound AI Systems — BAIR (Zaharia et al., Feb 2024)](https://bair.berkeley.edu/blog/2024/02/18/compound-ai-systems/)
+
+### Constitutional AI and critique
+- [Constitutional AI: Harmlessness from AI Feedback (Bai et al., Anthropic 2022)](https://arxiv.org/pdf/2212.08073)
+- [Claude's Constitution — Anthropic](https://www.anthropic.com/constitution)
+
+### LLM-as-Judge
+- [Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena (Zheng et al., 2023)](https://arxiv.org/abs/2306.05685)
+
+### Neurosymbolic and hybrid systems
+- [The Future Is Neuro-Symbolic — Marcus & Belle, AAAI 2025](https://www.rivista.ai/wp-content/uploads/2025/11/Belle_Marcus_AAAI-2.pdf)
+- [Neurosymbolic AI: A Comparative Study of Logical Reasoning Approaches (2025)](https://www.arxiv.org/pdf/2508.03366)
+- [RLSF: Fine-tuning LLMs via Symbolic Feedback (2024)](https://arxiv.org/pdf/2405.16661)
+- [Autonomous Business System via Neuro-symbolic AI (2025)](https://arxiv.org/pdf/2601.15599)
+
+### Compositionality
+- [Faith and Fate: Limits of Transformers on Compositionality (Dziri et al., NeurIPS 2024)](https://arxiv.org/abs/2307.05471)
 - [Towards Generalized Routing: Model and Agent Orchestration (2024)](https://arxiv.org/html/2509.07571v1)
+
+### Verifiable reasoning
+- [AlphaGeometry: An Olympiad-level AI system for geometry (DeepMind, Nature 2024)](https://deepmind.google/discover/blog/alphageometry-an-olympiad-level-ai-system-for-geometry/)
+- [AlphaGeometry 2 / AlphaProof (DeepMind, 2025)](https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/)
+
+### Industry overviews
+- [What Are Compound AI Systems? — IBM](https://www.ibm.com/think/topics/compound-ai-systems)
+- [What are Compound AI Systems? — Databricks](https://www.databricks.com/blog/what-are-compound-ai-systems)
