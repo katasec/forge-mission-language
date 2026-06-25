@@ -22,8 +22,8 @@ until curl -sf "http://localhost:$PORT/v1/models" > /dev/null 2>&1; do
 done
 echo "Ready."
 
-# Ensure requests package is available
-"$PYTHON" -c "import requests" 2>/dev/null || "$PYTHON" -m pip install --quiet --no-warn-script-location requests
+# Ensure openai package is available
+"$PYTHON" -c "import openai" 2>/dev/null || "$PYTHON" -m pip install --quiet --no-warn-script-location openai
 
 # Run the Python client
 "$PYTHON" "$(dirname "$0")/client.py"
