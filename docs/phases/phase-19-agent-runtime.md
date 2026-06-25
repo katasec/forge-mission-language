@@ -80,9 +80,13 @@ This follows the same pattern as `katasec/oci-client-dotnet`:
 
 `Katasec.OaiServer` owns:
 - ASP.NET Core minimal API setup
-- `/v1/chat/completions` request/response shapes (STJ source-gen for AOT safety)
-- SSE streaming in OAI format
-- Session handling (see open questions)
+- `/v1/chat/completions` — non-streaming + SSE streaming (OAI chat format)
+- `/v1/models` — model listing
+- `/v1/responses` — OpenAI Responses API (2025), non-streaming + SSE streaming
+- All request/response shapes via STJ source-gen (AOT-safe)
+- Session handling
+
+As of v0.1.4, all three endpoints are spec-compliant and verified by 28 tests using the official `OpenAI` .NET SDK as the test client.
 
 `Katasec.OaiServer` takes an `IChatClient` — it has no knowledge of MCL, missions, or experts. Forge wires a mission-backed `IChatClient` and hands it to the library. The library is independently useful for any `IChatClient` implementation.
 

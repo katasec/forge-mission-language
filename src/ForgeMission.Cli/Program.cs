@@ -426,8 +426,10 @@ static Command BuildServeCommand()
         var app           = OaiServer.Build(missionClient, config.Id, config.Port);
 
         Console.Error.WriteLine($"forge serve — agent '{config.Id}' listening on http://0.0.0.0:{config.Port}");
-        Console.Error.WriteLine($"  mission : {missionPath}");
-        Console.Error.WriteLine($"  endpoint: POST /v1/chat/completions");
+        Console.Error.WriteLine($"  mission  : {missionPath}");
+        Console.Error.WriteLine($"  endpoints: POST /v1/chat/completions  (chat, streaming)");
+        Console.Error.WriteLine($"             POST /v1/responses          (responses API, streaming)");
+        Console.Error.WriteLine($"             GET  /v1/models");
 
         try
         {
