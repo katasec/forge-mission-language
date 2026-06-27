@@ -1,6 +1,6 @@
 # Phase 32 — Safe Execution as a First-Class Primitive (`kind: exec`)
 
-> **Status: Design**
+> **Status: Implemented — v0.7.0**
 > **Priority: Higher than Phase 31 (Forge Runtime Platform)**
 > **Depends on:** Phase 22a (kind dispatch infrastructure), Phase 22b (ONNX — establishes multi-artifact expert packaging pattern)
 > **Purpose:** Add deterministic, out-of-process execution as a first-class expert kind.
@@ -101,8 +101,7 @@ execution is required internally.
 name: StaticAnalyser
 kind: exec
 command: python3
-args: ./analysis.py
-
+args: [./analysis.py]
 inputs: [repo_path, language, ruleset]
 outputKey: findings
 timeout: 30s
@@ -113,11 +112,11 @@ Runs static analysis against the target repository and returns structured findin
 
 | Field | Required | Description |
 |---|---|---|
-| `command` | Yes | Path to script/binary, relative to expert directory. Or a system-installed tool name (no `./` prefix). |
-| `args` | No | Interpreter/runtime: `python3`, `node`, `go run`, etc. Omit for native binaries. |
-| `inputs` | Yes | Comma-separated context bag keys to pass as input JSON. |
+| `command` | Yes | Executable to run. System tool name (`python3`, `semgrep`) or relative path (`./bin/analyse`). |
+| `args` | No | YAML list of arguments passed to the command. Each element is a discrete argument — no shell parsing. |
+| `inputs` | Yes | YAML list of context bag keys to pass as JSON on stdin. |
 | `outputKey` | Yes | Context bag key to write the result into. |
-| `timeout` | No | Execution timeout. Default: `30s`. |
+| `timeout` | No | Execution timeout. Default: `30s` or `[execution] defaultTimeout`. |
 
 `kind` defaults to `llm` when absent — fully backward compatible. No existing experts
 are affected.
@@ -255,9 +254,8 @@ Three valid sources for the executable, in order of hermeticity:
 
 | Source | Syntax | Notes |
 |---|---|---|
-| Expert-packaged | `command: python3
-args: ./analysis.py` | Hermetic; versioned with expert; ideal for OCI distribution |
-| System-installed | `executable: semgrep` | No `./` prefix; resolved from PATH; practical for dev tooling |
+| Expert-packaged | `command: python3` + `args: [./analysis.py]` | Hermetic; versioned with expert; ideal for OCI distribution |
+| System-installed | `command: semgrep` | No `./` prefix; resolved from PATH at runtime |
 | OCI-pulled | TBD | Cleanest for platform; aligns with Phase 11 expert sourcing model |
 
 System-installed is the right default for local development workflows (e.g. `semgrep`,
@@ -293,8 +291,8 @@ requirements and the Forge Runtime (Phase 31) can route or reject accordingly:
 ---
 name: VisualClassifier
 kind: exec
-executable: ./infer.py
-
+command: python3
+args: [./infer.py]
 inputs: [image_path]
 outputKey: classification
 resources:
@@ -332,8 +330,7 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
 
 `ProcessExecBackend`:
 - `Process.Start` with `UseShellExecute = false`, `RedirectStandardInput/Output/Error = true`
-- Build argv correctly: `args` is the executable, `command` is first argument (for
-  interpreted scripts); omit runtime for native binaries
+- Build argv: `command` is the executable, `args` is the argument list; uses `ProcessStartInfo.ArgumentList` (no shell parsing)
 - Write input JSON to stdin; close stdin after write
 - Read stdout and stderr concurrently (avoid deadlock on full pipe buffers)
 - Enforce timeout via `CancellationToken` + `Process.Kill`
@@ -346,8 +343,7 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
   primarily a documentation and validation change)
 - `forge init` resolves executable dependencies for expert-packaged scripts (e.g.
   `requirements.txt` → `pip install`) — design TBD
-- `forge validate` checks that declared `command` exists (local path) or is on PATH
-  (system tool) and reports missing executables early
+- `forge validate` checks `kind:exec` frontmatter fields (command, inputs, outputKey required) but does NOT check PATH — runtime failure surfaces this cleanly (see Design Question #5)
 
 ### Spoke 6 — `forge.toml` execution config
 
@@ -371,7 +367,7 @@ spec in the generated manifests, not in forge.toml.
 | 2 | **Multiple output keys** — should an exec expert be able to write multiple context bag keys from one execution? | Single `outputKey` is simpler. Multiple outputs could be addressed by returning a JSON object and letting the next `json_extract` step decompose it. Defer. |
 | 3 | **Loop convergence tie-in** — if `kind: exec` produces a `status: fail`, does the `onFail` pattern from `kind: rule` apply? | The loop feedback mechanism (Phase 14/28) should work uniformly across all kinds. `onFail` field on `kind: exec` experts is worth adding for consistency. Needs design. |
 | 4 | **Executable dependency installation** — for expert-packaged scripts, who installs `requirements.txt` / Go modules? | Options: `forge init` handles it, user handles it, runtime handles it lazily on first activation. `forge init` is consistent with the existing init-time resolution pattern. |
-| 5 | **System tool discovery** — should `forge validate` verify system-installed executables are on PATH, or defer to runtime? | Fail early is MCL's principle. `forge validate` should check PATH for non-`./` executables and warn if missing. |
+| 5 | **System tool discovery** — should `forge validate` verify system-installed executables are on PATH, or defer to runtime? | **Resolved — defer to runtime.** PATH is ephemeral and context-dependent (shell, user, container). Checking it at validate time gives false confidence. The OS surfaces missing executables cleanly at process start. Removed ~40 lines of `IsOnPath` checking. |
 | 6 | **Timeout granularity** — global default in `[execution]` or per-expert in frontmatter, or both? | Both: global default in `forge.toml`, per-expert override in frontmatter. The expert author knows the expected runtime better than the operator. |
 | 7 | **AOT safety** — the process backend uses `Process.Start` which is AOT-safe. No further AOT investigation needed for the current backend. | Resolved — `process` only, AOT-safe by construction. |
 | 8 | **`kind: exec` vs `kind: http` boundary** — when should an author choose exec over http? | `http` = pre-deployed, long-running service. `exec` = packaged, per-invocation, hermetic. The author guide should make this explicit. |

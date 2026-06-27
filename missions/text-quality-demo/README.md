@@ -58,7 +58,7 @@ and runs the ONNX model in-process. No HTTP roundtrip, no external service.
 ---
 kind: onnx
 model: ./models/quality-scorer.onnx
-inputs: word_count, avg_sentence_length, vocabulary_richness
+inputs: [word_count, avg_sentence_length, vocabulary_richness]
 outputKey: quality_score
 threshold: 0.5
 ---

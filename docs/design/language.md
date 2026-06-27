@@ -369,6 +369,8 @@ Only one judge per pipeline is typical. Multiple judges are valid — any failin
 | `http` | Expert POSTs the context bag as JSON to `endpoint` and expects a `StepEnvelope` response. No system prompt sent. Requires `endpoint`. |
 | `rule` | Expert evaluates a deterministic `check` expression against the prior step's output. No LLM call. Requires `check`. |
 | `onnx` | Expert loads an ONNX model, reads named float features from the context bag, runs inference in-process, writes the score back to the bag. Requires `model`, `inputs`, `outputKey`, `threshold`. |
+| `json_extract` | Bridges an LLM step's JSON or mixed prose+JSON output into typed context bag entries. No LLM call, no system prompt. |
+| `exec` | Runs an external process, passes declared context keys as JSON on stdin, reads JSON from stdout, writes the result to the context bag. Requires `command`, `inputs`, `outputKey`. |
 
 `kind: rule` pushes determinism left. Structural checks that do not need AI judgment — word count, JSON validity, heading presence — should not consume LLM tokens. The rule either passes or fails instantly.
 
@@ -454,7 +456,7 @@ input: Normalised metric features
 output: Anomaly score and pass/fail decision
 kind: onnx
 model: ./models/isolation-forest.onnx
-inputs: cpu_usage, memory_usage, request_latency
+inputs: [cpu_usage, memory_usage, request_latency]
 outputKey: anomaly_score
 threshold: 0.85
 ---
@@ -463,7 +465,7 @@ threshold: 0.85
 | Field | Required | Description |
 |-------|----------|-------------|
 | `model` | Yes | Path to the `.onnx` file, relative to the expert's directory |
-| `inputs` | Yes | Comma-separated list of context bag keys to read as float features. Prior steps must write these values. |
+| `inputs` | Yes | YAML list of context bag keys to read as float features. Prior steps must write these values. |
 | `outputKey` | Yes | Key written into the context bag with the inference score (`double`). Subsequent LLM steps can reference it via `{{outputKey}}`. |
 | `threshold` | Yes | Score above this value → `status: fail`. At or below → `status: pass`. |
 
@@ -486,7 +488,7 @@ mission LogAnomalyDetection(log_line) = {
 
 ### `kind: json_extract`
 
-`kind: json_extract` bridges the gap between an LLM step's JSON output and downstream non-LLM steps (typically `kind: onnx`) that read named numeric values from the context bag. It parses `context["output"]` as JSON and injects each top-level key directly into the context bag as a typed value — no model, no HTTP call, no system prompt.
+`kind: json_extract` bridges the gap between an LLM step's output and downstream steps that read named typed values from the context bag. It parses `context["output"]` as JSON and injects each top-level key directly into the context bag — no model, no HTTP call, no system prompt.
 
 ```markdown
 ---
@@ -497,12 +499,34 @@ kind: json_extract
 ---
 ```
 
-The expert frontmatter body (system prompt) is unused. The runner reads `context["output"]`, calls `JsonDocument.Parse`, iterates `RootElement.EnumerateObject()`, and writes each property:
+The expert frontmatter body (system prompt) is unused. The runner reads `context["output"]` and handles two output formats automatically:
+
+**Pure JSON** — `context["output"]` is a bare JSON object:
+
+```json
+{"word_count": 245, "avg_sentence_length": 18.3}
+```
+
+**Mixed prose + JSON** — `context["output"]` contains reasoning narrative followed by a fenced JSON block:
+
+```
+The text shows strong vocabulary diversity and well-formed sentences.
+Average length suggests a technical audience.
+
+```json
+{"word_count": 245, "avg_sentence_length": 18.3}
+```
+```
+
+In the mixed case, `json_extract` strips the ` ```json ` fence and extracts the JSON. The prose outside the fence is preserved in `context["output"]`, making it available to downstream LLM steps via `{{output}}`. The JSON keys flow into the context bag as typed values.
+
+**Type mapping:**
 
 - `JsonValueKind.Number` → stored as `double`
-- Any other kind → stored as `string` (via `JsonElement.ToString()`)
+- `JsonValueKind.Array` or `JsonValueKind.Object` → stored as raw JSON string (via `GetRawText()`)
+- Any other kind → stored as `string`
 
-If `context["output"]` is not valid JSON, a `JsonException` propagates and the step fails.
+If `context["output"]` contains neither valid JSON nor a ` ```json ` fence, the step fails with a clean error: `json_extract (Name): output contains neither valid JSON nor a ```json fence`.
 
 **Full LLM → json_extract → onnx → LLM pipeline:**
 
@@ -515,7 +539,99 @@ mission ContentQuality(text) = {
 }
 ```
 
+**Mixed prose+JSON pipeline** — when an LLM produces both reasoning and structured output:
+
+```fsharp
+mission AnalyseSentiment(text) = {
+    SentimentAnalyser   // kind:llm — writes prose reasoning + ```json {"sentiment": "positive", "score": 0.85}
+    -> VerdictExtractor // kind:json_extract — prose → {{output}}, JSON keys → context bag
+    -> SummaryWriter    // kind:llm — uses {{output}} (reasoning) and {{sentiment}}, {{score}}
+}
+```
+
 The injected keys are immediately available to all subsequent steps via `{{key}}` interpolation. Because numbers are stored as `double`, the `OnnxExpertRunner` can read them without conversion friction, and LLM steps get a human-readable decimal string automatically via `.ToString()`.
+
+### `kind: exec`
+
+`kind: exec` runs an external process as a first-class pipeline step. It enables the neurosymbolic pattern: measure deterministically, then reason over evidence rather than having the LLM confabulate measurements.
+
+```markdown
+---
+name: CodeAnalyser
+input: Path to the repository
+output: Structured code metrics
+kind: exec
+command: python3
+args: [./analyse.py]
+inputs: [repo_path]
+outputKey: metrics
+timeout: 30s
+---
+
+Runs static analysis against the target repository and returns structured findings.
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `command` | Yes | Executable to run. Use a system tool name (`python3`, `semgrep`) or a relative path (`./bin/analyse`). |
+| `args` | No | YAML list of arguments passed to the command. Each element is a discrete argument — no shell parsing, no space-splitting. |
+| `inputs` | Yes | YAML list of context bag keys. The runtime serialises these as a JSON object and writes it to the process's stdin. |
+| `outputKey` | Yes | Context bag key to write the result into. The process must write a JSON object to stdout; the runtime extracts all top-level keys into the context bag and also stores the full object under `outputKey`. |
+| `timeout` | No | Execution timeout, e.g. `30s`, `2m`. Default: `30s` or the `[execution] defaultTimeout` from `forge.toml`. |
+
+**JSON stdin/stdout contract:**
+
+The runtime writes the declared `inputs` as a JSON object to stdin. The process writes a JSON object to stdout. The runtime reads it, extracts all keys into the context bag, and stores the full object under `outputKey`. Stderr is captured for debugging and does not affect the pipeline result.
+
+```
+forge runtime
+    |
+    |  {"repo_path": "/src/app"}  →  stdin
+    |
+    v
+analyse.py
+    |
+    |  {"total_lines": 120, "function_count": 8, "complexity": "medium"}  →  stdout
+    |
+forge: injects total_lines, function_count, complexity into context bag
+```
+
+**Multi-artifact experts** — `kind: exec` enables experts that package their own tooling:
+
+```
+experts/CodeAnalyser/
+  expert.md        ← frontmatter, description
+  analyse.py       ← packaged script (referenced by ./analyse.py)
+```
+
+The runtime sets the working directory to the expert's directory, so `./analyse.py` resolves correctly regardless of where `forge run` is invoked from.
+
+**Execution config in `forge.toml`:**
+
+```toml
+[execution]
+backend        = "process"    # only supported backend; wasm/hyperlight are future
+defaultTimeout = "30s"        # overridden per-expert via timeout: field
+```
+
+**Neurosymbolic pattern — full pipeline:**
+
+```fsharp
+mission ReviewCode(repo_path) = {
+    CodeAnalyser        // kind:exec — measures: lines, functions, branches
+    -> MetricsExtractor // kind:json_extract — unpacks metrics into context bag
+    -> CodeReviewer     // kind:llm — reasons over {{total_lines}}, {{branch_count}}, etc.
+    -> FindingsExtractor// kind:json_extract — strips fence, separates prose from structured verdict
+    -> ReportWriter     // kind:llm — combines prose reasoning and structured verdict
+}
+```
+
+**Error behaviour:**
+- Non-zero exit code → `status: fail`, stderr in reason
+- Timeout → `status: fail` with timeout message
+- Invalid JSON on stdout → step fails with clear message
+
+**Security model:** The `process` backend provides no in-process sandbox. In production, isolation is the K8s pod boundary — seccomp profiles, AppArmor, network policies, and resource limits are configured on the pod spec. `kind: exec` is trusted code only; it is the expert author's responsibility to ensure the executable is safe to run.
 
 ## Standard library
 
@@ -574,7 +690,7 @@ mission has its own isolated context.
 
 The following are explicitly excluded:
 
-- Tool calls, function calls, shell commands
+- Shell execution (`sh -c "..."`) — `kind: exec` uses explicit argv, never a shell string
 - Type annotations (typed context bag is planned — Phase 22)
 - Match expressions, general branching, DAG execution
 - Unbounded loops
