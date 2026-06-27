@@ -45,9 +45,12 @@ public class OnnxExpertRunner : IExpertRunner
         var score      = probs.Length >= 2 ? probs[1] : probs[0];
         context[expert.OutputKey] = (double)score;
 
-        var threshold = float.Parse(expert.Threshold);
-        var status    = score > threshold ? "fail" : "pass";
-        var reason    = score > threshold
+        var threshold  = float.Parse(expert.Threshold);
+        var exceeded   = score > threshold;
+        // Only gate the pipeline when role:judge is explicitly set.
+        // Without it, the score is written to the context bag for when() routing and the step always passes.
+        var status = exceeded && expert.IsJudge ? "fail" : "pass";
+        var reason = exceeded && expert.IsJudge
             ? $"Anomaly score {score:F4} exceeds threshold {threshold}"
             : null;
 

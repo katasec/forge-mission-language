@@ -167,7 +167,7 @@ static Command BuildRunCommand()
         catch (AggregateExpertLoadException ex) { foreach (var e in ex.Errors) ReportExpertDiagnostic(e); Environment.Exit(1); return; }
         catch (ExpertLoadException ex)           { ReportExpertDiagnostic(ex); Environment.Exit(1); return; }
 
-        if (!TryValidate(ast, expertDefs)) return;
+        if (!TryValidate(ast, expertDefs, contractWarningsAreErrors: true)) return;
 
         Dictionary<string, object> seedContext;
         try { seedContext = ContextBuilder.Seed(ast, parsedVars); }
@@ -582,10 +582,31 @@ static Dictionary<string, ExpertDefinition>? TryLoadExperts(string expertsDir)
     catch (ExpertLoadException ex) { ReportExpertDiagnostic(ex); Environment.Exit(1); return null; }
 }
 
-static bool TryValidate(MclProgram ast, Dictionary<string, ExpertDefinition> experts)
+static bool TryValidate(MclProgram ast, Dictionary<string, ExpertDefinition> experts,
+    bool contractWarningsAreErrors = false)
 {
-    try { ExpertLoader.Validate(ast, experts, Console.Error); return true; }
+    var contractWarnings = new StringWriter();
+    try
+    {
+        ExpertLoader.Validate(ast, experts, contractWarnings);
+    }
     catch (ExpertLoadException ex) { ReportExpertDiagnostic(ex); Environment.Exit(1); return false; }
+
+    var warnings = contractWarnings.ToString();
+    if (string.IsNullOrEmpty(warnings)) return true;
+
+    if (contractWarningsAreErrors)
+    {
+        Console.Error.WriteLine(BoldRed("Contract validation failed — fix these before running:"));
+        Console.Error.WriteLine();
+        foreach (var line in warnings.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            Console.Error.WriteLine($"  {BoldRed("error")}{Bold(": " + line.Replace("warning ", ""))}");
+        Console.Error.WriteLine();
+        return false;
+    }
+
+    Console.Error.Write(warnings);
+    return true;
 }
 
 // Builds the full runner dictionary from forge.toml profiles.
