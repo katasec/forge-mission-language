@@ -1,380 +1,284 @@
-# Phase 31 — Forge Runtime Platform
+# Phase 31 — Forge Generate & Capability Packaging
 
 > **Status: Design**
-> **Depends on:** Phase 19 (forge serve, OaiServer), Phase 25 (forge.toml, two-file model), Phase 29 (UC reference missions — provides the first capabilities to host)
-> **Purpose:** Evolve MCL from a developer authoring tool into a platform for publishing,
-> hosting, discovering, and consuming reusable reasoning capabilities. This is not an
-> extension of `forge serve`. It is a second product built on top of MCL.
+> **Depends on:** Phase 19 (forge serve, OaiServer), Phase 25 (forge.toml, two-file model), Phase 29 (UC reference missions)
+> **Purpose:** Give operators a way to deploy MCL missions to production Kubernetes clusters
+> without introducing a proprietary runtime. Forge generates standard K8s manifests.
+> The operator applies them via their own tooling (kubectl, ArgoCD, Flux, Helm).
 
 ---
 
-## Why this phase exists
+## Design philosophy
 
-`forge serve` today exposes a single hosted mission from a developer's local environment.
-That is useful, but it still assumes the user is technical: they install Forge, author
-missions, configure providers, and run a local process.
+Forge's job is to generate. The operator's job is to deploy.
 
-This phase targets a different user and a different lifecycle stage.
+These concerns must not be conflated. Every enterprise Kubernetes shop already has
+an operational model — GitOps, ArgoCD, Flux, Helm, whatever it is. Forge does not
+need to become part of that model. It needs to emit artifacts that fit into it.
 
-**The distinction:**
+This means:
 
-| | Forge CLI | Forge Runtime |
-|---|---|---|
-| Primary user | Mission author / developer | End user / consumer |
-| What they do | Author, validate, test, publish | Discover, select, consume |
-| What they see | `.mcl` files, `forge.toml`, experts | A catalog of capabilities |
-| Deployment | Local install, AOT binary | Hosted service |
-| Analogy | Terraform CLI | HCP Terraform |
+- `forge generate` writes K8s manifests to a directory or stdout. It does not apply them.
+- Scheduling is a CronJob `spec.schedule`. Forge writes it; K8s runs it.
+- Resource routing (GPU, memory) is node affinity and tolerations. Forge generates
+  them from expert frontmatter declarations (Phase 32 Spoke 1). K8s enforces them.
+- State management is the developer's concern. If the mission needs Redis, Postgres,
+  or a file volume, the developer wires it up. Forge does not prescribe or manage
+  state backends — that concurrency model belongs to the application, not the runtime.
+- Secrets (API keys, provider credentials) are K8s Secrets or whatever the operator
+  uses (Vault, external-secrets-operator). Forge generates the env var references;
+  the operator populates the values.
 
-End users do not know MCL exists. They connect Open WebUI (or any OAI-compatible
-client) to Forge Runtime and see:
-
-```
-security-review
-pci-audit
-k8s-architect
-debugger
-terraform-review
-design-review
-```
-
-They pick a capability. The platform handles the rest. The MCL mission underneath
-is an implementation detail.
+> ~~Orleans~~ — the original design proposed an Orleans silo as the runtime substrate.
+> This is retired. Orleans solves problems (virtual actor identity, sub-millisecond
+> activation, managed grain lifecycle) that do not apply to MCL's current workloads,
+> which are batch and scheduled pipelines. K8s already provides scheduling, isolation,
+> resource routing, and observability — and the target market already operates it.
+> Introducing a proprietary runtime would duplicate that infrastructure and add an
+> operational dependency that Forge cannot justify owning. If a managed Forge Cloud
+> offering becomes a future product decision, Orleans would be the right backend for
+> that hosting tier. It is not the right substrate for self-hosted enterprise deployment.
 
 ---
 
-## The product split
+## What `forge generate` produces
 
-The clearest analogy is Terraform / HCP Terraform:
+Given a `forge.toml` with schedule and agent declarations, `forge generate` emits
+standard Kubernetes manifests into a `./k8s/` directory (or stdout with `--stdout`):
 
-| Terraform world | Forge world |
+| Source declaration | Generated manifest |
 |---|---|
-| HCL | MCL |
-| Terraform CLI | Forge CLI |
-| Terraform module | MCL mission / capability package |
-| Terraform Registry | OCI capability registry |
-| HCP Terraform | Forge Runtime / Platform |
-| Workspace | Hosted capability / agent |
-| Run | Mission invocation |
-| VCS trigger | Event-driven agent invocation |
+| `[schedule]` mission | `CronJob` — one per entity instance |
+| `[agents]` mission | `Deployment` running `forge serve` |
+| Expert `resources.gpu` | `nodeAffinity` + `tolerations` + resource `limits` |
+| Expert `resources.gpu_memory` | `resources.limits.nvidia.com/gpu-memory` |
+| `forge.toml [generate.k8s]` | `namespace`, image ref, pull policy |
 
-Terraform `.tf` files are not what most enterprise users interact with directly.
-They interact with workspaces, runs, and outputs in HCP Terraform. MCL `.mcl`
-files are not what most end users interact with. They interact with capabilities.
+The generated YAML is plain Kubernetes — no CRDs, no Forge-specific operators.
+Any operator who can read K8s YAML can read, review, and modify it. This is
+intentional: the manifest is the operator's artifact, not Forge's.
 
 ---
 
-## Lifecycle
-
-```
-Author
-    |
-    v
-Mission (.mcl file)
-    |
-    v
-Package / Publish
-    |
-    v
-Capability (published artifact in OCI registry)
-    |
-    v
-Host (Forge Runtime registers the capability)
-    |
-    v
-Agent (hosted capability, addressable by name)
-    |
-    v
-Consume (users, tools, events summon the agent)
-```
-
-The parallel to modern software delivery:
-
-```
-Source → Container Image → Registry → Kubernetes → Users
-```
-
----
-
-## Architecture
-
-### Four-layer model
-
-```
-MCL              owns reasoning workflows
-Forge CLI        owns local authoring, validation, packaging, publishing
-Forge Runtime    owns hosted capabilities, addressable workforce
-Orleans          owns runtime identity, activation, lifecycle, collaboration
-```
-
-### The layered execution model
-
-```
-Experts        execute inside a mission       (MCL PipelineRunner)
-Missions       execute inside an agent        (AgentGrain → PipelineRunner)
-Agents         collaborate through the runtime (AgentGrain → AgentGrain)
-```
-
-**Critical invariant:** Orleans wraps missions; it never decomposes them.
-
-The internal steps of an MCL mission (`Architect -> SecurityReviewer -> Judge`)
-execute inside `PipelineRunner` exactly as authored. They are never decomposed into
-per-expert grains. The grain's `RunAsync` calls `PipelineRunner` and returns a result.
-The workflow is MCL's asset — explicit, readable, reviewable, versionable.
-
-Grain-to-grain calls belong one level higher: a `DesignAgent` that delegates to
-`SecurityReviewAgent` and `CostAnalysisAgent` is agent-to-agent collaboration,
-not expert-level decomposition.
-
-### Why Orleans and not a dictionary
-
-`Dictionary<string, PipelineRunner>` can technically host multiple missions in one
-process. Orleans is not chosen to solve that technical problem.
-
-Orleans is chosen because its virtual actor model expresses the right product abstraction:
-
-| Product concept | Orleans concept |
-|---|---|
-| Specialist / capability | Grain |
-| "Always there, summon on demand" | Virtual actor (activated on first call) |
-| Addressable by name | `IGrainWithStringKey` |
-| Capability has an identity | `AgentGrain("security-review")` IS the specialist |
-| Specialists can collaborate | Grain-to-grain calls |
-| Workforce across machines | Silo clustering |
-
-A dictionary is a lookup table. The runtime is a workforce. Orleans expresses that
-distinction in code.
-
-### Capability identity vs conversation memory
-
-These are orthogonal concepts and must not be coupled in the grain:
-
-```
-AgentGrain("security-review")   = capability (what it knows, how it reasons)
-SessionGrain("session-abc123")  = conversation (what was said, to whom, when)
-```
-
-A security review capability should not accumulate every previous conversation
-simply because it has an Orleans identity. Grain state, if any, should be
-minimal — primarily the cached compiled mission representation (parsed AST +
-resolved `ExpertDefinition`s). Everything conversational lives in a `SessionGrain`.
-
-This separation gives flexibility: many concurrent sessions per capability,
-sessions optionally spanning multiple capabilities, capability state versioned
-independently of conversation history.
-
-### AOT boundary
-
-The Forge CLI binary is `PublishAot=true` and must remain so. Orleans is not
-AOT-compatible for silo startup. These are different artifacts:
-
-- `forge` (CLI) — Native AOT, used by authors and developers
-- `forge-runtime` (Platform) — Regular .NET server process, hosted service
-
-The AOT binary covers `forge run`, `forge validate`, `forge publish`, and
-single-mission `forge serve`. The platform binary is a separate deployment artifact.
-
-### OpenAI compatibility as distribution
-
-Forge Runtime exposes capabilities through the OAI-compatible API already implemented
-in `Katasec.OaiServer`:
-
-```
-GET /v1/models       → capability catalog (grain names)
-POST /v1/chat/completions  { "model": "security-review", ... }
-                     → routes to AgentGrain("security-review")
-```
-
-The OAI protocol is the distribution layer. Any OAI-compatible client (Open WebUI,
-Claude Code, any SDK) connects to Forge Runtime without knowing MCL exists. The
-user picks a model name; the platform handles the rest.
-
-### MCL's explicit workflow as differentiator
-
-Most AI agents are black boxes. An MCL-backed capability's reasoning is inspectable:
-the `.mcl` mission file is readable, reviewable, and versionable. In regulated
-contexts (finance, security, compliance), a `pci-audit` capability whose reasoning
-model can be audited is a meaningfully different product from an opaque AI wrapper.
-
----
-
-## Interfaces (proposed)
-
-```csharp
-public interface IAgentGrain : IGrainWithStringKey
-{
-    Task<AgentResponse> RunAsync(AgentRequest request, CancellationToken ct);
-}
-
-public record AgentRequest(
-    IReadOnlyList<ChatMessage> Messages,
-    string? SessionId,
-    string? CorrelationId,
-    bool Stream,
-    IReadOnlyDictionary<string, string>? Variables
-);
-
-public record AgentResponse(
-    string Content,
-    AgentStatus Status,
-    string? SessionId,
-    string? TraceId,
-    IReadOnlyList<StepOutput>? StepOutputs,
-    string? Error
-);
-```
-
-The grain's `RunAsync` implementation:
-1. Loads/resolves the mission (from grain state cache or disk)
-2. Builds context from incoming messages and session history
-3. Calls `PipelineRunner.RunAsync` with the resolved mission
-4. Returns the final `StepEnvelope` as an `AgentResponse`
-
----
-
-## Spoke summary
-
-| Spoke | Description | Depends on |
-|---|---|---|
-| 1 | Platform binary — `ForgeMission.Platform`, Orleans silo, ASP.NET host | Phase 19 OaiServer |
-| 2 | Workforce manifest — `forge.toml` `[agents]` section, capability registration at startup | Phase 25 forge.toml |
-| 3 | `IAgentGrain` — interface, request/response shapes, wraps `PipelineRunner` | Spoke 1 |
-| 4 | OAI API routing — `/v1/models` catalog, `model` field → grain dispatch | Spokes 2, 3 |
-| 5 | Capability/Session separation — `AgentGrain` stateless, `SessionGrain` owns conversation | Spoke 3 |
-| 6 | Event router — external trigger (webhook/queue) → grain invocation; GitHub PR reference example | Spoke 4 |
-| 7 | `forge publish` + OCI capability packaging — package mission as OCI artifact, push to registry | Phase 11 OCI |
-| 8 | MVP proof — Phase 29 capabilities hosted, Open WebUI connects, non-technical user validation | Spokes 1–4 + Phase 29 |
-
----
-
-## Hub + Spokes
-
-### Spoke 1 — Platform Binary
-
-Separate project: `ForgeMission.Platform` (or `forge-runtime`). Not AOT.
-
-- Orleans silo configured in-process
-- ASP.NET Core host with `Katasec.OaiServer` wired in
-- `forge-runtime serve` CLI verb (or standalone `forge-runtime` binary)
-- `forge serve --runtime orleans` flag as an alternative entry point
-
-The grain factory is the bridge: OAI request arrives → extract `model` field →
-`grainFactory.GetGrain<IAgentGrain>(model)` → `RunAsync`.
-
-### Spoke 2 — Workforce Manifest
-
-Extend `forge.toml` with an `[agents]` section:
+## forge.toml additions
 
 ```toml
-[agents]
-"security-review"   = "./missions/security-review/mission.mcl"
-"pci-audit"         = "./missions/pci-audit/mission.mcl"
-"k8s-architect"     = "./missions/k8s-architect/mission.mcl"
-"debugger"          = "./missions/debugger/mission.mcl"
+[generate.k8s]
+namespace   = "forge-missions"
+image       = "ghcr.io/katasec/forge-runtime:latest"
+pull_policy = "IfNotPresent"
+
+# Scheduled mission — generates one CronJob
+[[generate.k8s.scheduled]]
+mission  = "./missions/trade-signal/mission.mcl"
+schedule = "*/15 9-16 * * 1-5"   # standard cron expression
+
+# Served mission — generates a Deployment running forge serve
+[[generate.k8s.served]]
+mission  = "./missions/security-review/mission.mcl"
+name     = "security-review"
+replicas = 1
 ```
 
-At silo startup, each entry is registered as a named grain. `/v1/models` returns
-all keys. Grain activation loads the corresponding `.mcl` file and caches the
-compiled mission (parsed AST + resolved `ExpertDefinition`s). Reload on
-`forge-runtime reload <name>` or grain deactivation.
+`forge generate` produces one CronJob manifest. If the operator needs to run the
+same mission for multiple entities (e.g. multiple tickers), they duplicate and edit
+the generated manifest as they would any K8s resource. That is standard K8s practice
+and an operator concern — not a Forge concern.
 
-### Spoke 3 — `IAgentGrain`
+---
 
-Minimal grain that wraps `PipelineRunner`. Grain state: compiled mission cache only.
+## Resource routing — connection to Phase 32
 
-The grain does NOT decompose the mission into sub-grains. It calls `PipelineRunner`
-as a single unit of work. The mission's internal steps are MCL's concern.
+Expert frontmatter declared in Phase 32 Spoke 1:
 
-### Spoke 4 — OAI API Routing
-
-`Katasec.OaiServer` already handles OAI wire format. This spoke wires the grain
-factory into the server's `IChatClient` position:
-
-- `/v1/models` → list grain keys from manifest
-- `POST /v1/chat/completions` → `model` field → `AgentGrain(model).RunAsync`
-- Streaming: grain returns result; SSE framing is ASP.NET layer concern
-
-### Spoke 5 — Capability/Session Separation
-
-Phase 1: `AgentGrain` is effectively stateless per request (caches compiled mission only).
-Session history handled by existing `ISessionStore` if present.
-
-Phase 2: Introduce `SessionGrain(sessionId)` that owns message history. `AgentGrain`
-retrieves session context from `SessionGrain` at the start of each `RunAsync` call and
-updates it at completion.
-
-The grain key of the `SessionGrain` is scoped to a user + capability:
-`{agentName}/{sessionId}` avoids cross-agent session bleed.
-
-### Spoke 6 — Event Router
-
-An event arrives (GitHub webhook, queue message, scheduled trigger) and summons a
-hosted capability.
-
-```
-External event
-    |
-    v
-Event Router (ASP.NET middleware or separate listener)
-    |
-    v
-Resolve target agent from event type + config
-    |
-    v
-AgentGrain(agentName).RunAsync(request)
-    |
-    v
-Deliver result (post to webhook response URL, write to output, etc.)
+```markdown
+---
+name: VisualClassifier
+kind: exec
+resources:
+  gpu: "8Gi"
+---
 ```
 
-MCL is the workflow. Events are triggers. The router maps event types to agent names
-via a simple config block — no MCL grammar changes needed.
+`forge generate` reads these declarations and emits the corresponding K8s scheduling
+constraints automatically:
 
-Reference example: GitHub PR opened → `AgentGrain("code-reviewer")` → post review comment.
+```yaml
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: nvidia.com/gpu
+          operator: Exists
+tolerations:
+- key: nvidia.com/gpu
+  operator: Exists
+  effect: NoSchedule
+resources:
+  limits:
+    nvidia.com/gpu: 1
+    memory: "8Gi"
+```
 
-### Spoke 7 — `forge publish` + OCI Capability Packaging
+The expert author declares what the workload needs. The operator owns the cluster
+configuration. `forge generate` is the translation layer between them.
 
-Package a mission + its resolved experts as a single OCI artifact:
+`gpu: none` (or omitted) generates no affinity constraints.
+`gpu: any` generates the affinity and toleration but no memory limit.
+
+---
+
+## State management
+
+Forge does not manage state. This is a deliberate boundary.
+
+If a mission needs to persist state across runs (previous signal, audit history,
+entity context), the developer chooses their own backend — Postgres, Redis, SQLite,
+a file volume — and wires it up in the process expert or via environment variables.
+The concurrency model (optimistic locking, Redis SETNX, Postgres advisory locks)
+is the developer's concern, not the runtime's.
+
+`forge generate` can emit a `PersistentVolumeClaim` reference if declared in
+`forge.toml`, but it does not create or manage the backing storage.
+
+The rationale: state backends are a solved problem with mature tooling. Prescribing
+one would constrain the developer unnecessarily and add an operational dependency
+to Forge that has no business being there.
+
+---
+
+## The OAI endpoint / Open WebUI story
+
+`forge serve` (Phase 19) remains the mechanism for serving missions as OAI-compatible
+endpoints. For production, `forge generate` emits a `Deployment` manifest that runs
+`forge serve` inside a container. The operator exposes it via their ingress of choice.
+
+Open WebUI (or any OAI client) points at the ingress address. The capability catalog
+(`/v1/models`) returns the agent names declared in `forge.toml [agents]`. The user
+picks a capability; the OAI request routes to the right mission. No change to the
+OAI layer — it runs inside a standard K8s pod.
+
+```
+Open WebUI
+    |
+    v
+K8s Ingress (operator-managed)
+    |
+    v
+Deployment: forge-serve (generated by forge generate)
+    |
+    v
+forge serve (Phase 19) — OAI routing to named missions
+```
+
+---
+
+## `forge publish` — OCI capability packaging
+
+Unchanged from original design. A mission + its resolved experts packaged as a
+single OCI artifact:
 
 ```bash
 forge publish security-review:v1.0 --registry ghcr.io/myorg
 ```
 
-The runtime discovers and pulls capabilities from the registry:
+The generated Deployment manifest can reference a published OCI capability directly:
 
 ```toml
-[agents]
-"security-review" = "ghcr.io/myorg/security-review:v1.0"
+[[generate.k8s.served]]
+capability = "ghcr.io/myorg/security-review:v1.0"
+name       = "security-review"
 ```
 
-This closes the full lifecycle: Author → Mission → `forge publish` → OCI registry →
-Forge Runtime pulls → capability available in workforce.
+This closes the full lifecycle:
 
-The OCI infrastructure from Phase 11 (expert distribution) is reused.
+```
+Author → Mission → forge publish → OCI registry
+                                        |
+                                   forge generate
+                                        |
+                                   K8s manifests → operator applies → running capability
+```
 
-### Spoke 8 — MVP Proof
+---
 
-**Definition of done for the platform concept:**
+## Hub + Spokes
 
-1. Forge Runtime starts with the Phase 29 UC missions registered as capabilities
-2. Open WebUI is configured to point at Forge Runtime instead of GPT / Claude
-3. A non-technical user opens Open WebUI, sees the capability list, picks one, sends a message
-4. They receive a useful response without knowing MCL, `forge`, or Orleans exist
+| Spoke | Description |
+|---|---|
+| 1 | `forge generate` verb — reads forge.toml, walks mission + expert graph, writes K8s YAML to `./k8s/` |
+| 2 | CronJob generation — `[generate.k8s.scheduled]` → CronJob per entity instance |
+| 3 | Deployment generation — `[generate.k8s.served]` → Deployment + Service running `forge serve` |
+| 4 | Resource/affinity generation — reads Phase 32 expert frontmatter `resources:`, emits nodeAffinity + tolerations |
+| 5 | `forge publish` + OCI capability packaging — mission as OCI artifact, registry push |
+| 6 | `forge dev start / stop` — local kind cluster for testing generated manifests (see below) |
+| 7 | MVP proof — `forge generate` on Phase 29 UC missions, `forge dev start`, validate end-to-end locally |
 
-This is the moment the product split is validated. Everything else in this phase
-is infrastructure to make that moment possible.
+### Spoke 6 — `forge dev start / stop`
+
+A local development convenience that spins up a [kind](https://kind.sigs.k8s.io/)
+(Kubernetes in Docker) cluster, runs `forge generate`, and applies the manifests —
+giving the developer a real K8s environment to test against without touching a
+production cluster or going through a GitOps pipeline.
+
+This is explicitly a **dev-only verb**. It does not set a precedent for `forge deploy`
+in production. The separation of concerns is preserved: `forge generate` still only
+generates; `forge dev start` wraps it for local iteration.
+
+Follows the same pattern as Phase 23 (`forge agent start`, `forge webui start`):
+prereq check → Docker/kind bootstrap → apply → report status.
+
+```bash
+forge dev start     # start kind cluster, generate manifests, apply, report ready
+forge dev stop      # delete the kind cluster
+forge dev status    # show running pods and CronJob schedules in the dev cluster
+```
+
+**`forge dev start` sequence:**
+
+1. Prereq check — `kind` and `kubectl` present; Docker running. Spectre.Console
+   TUI output consistent with Phase 23 prereq checker.
+2. `kind create cluster --name forge-dev` if not already running.
+3. Load the forge-runtime container image into the kind cluster
+   (`kind load docker-image`) — avoids registry round-trip in dev.
+4. Run `forge generate --stdout` internally and pipe to `kubectl apply -f -`
+   against the kind context (`--context kind-forge-dev`).
+5. Wait for pods/CronJobs to reach ready state; stream status via Spectre.Console.
+6. Print a summary: which CronJobs are scheduled, which Deployments are running,
+   how to access any served endpoints.
+
+**`forge dev stop` sequence:**
+
+1. `kind delete cluster --name forge-dev`
+2. Confirm deletion; note that any state written by the workload to non-persistent
+   volumes is gone.
+
+**What this is not:**
+
+- Not a production deployment path.
+- Not a substitute for the operator's GitOps workflow.
+- Not a managed state backend — any state the workload needs in dev is the
+  developer's own concern (e.g. a local Redis via Docker Compose alongside the
+  kind cluster).
+
+**Prerequisites declared in docs, not enforced silently:**
+
+- `kind` — `brew install kind` / `go install sigs.k8s.io/kind`
+- `kubectl` — assumed present (same prereq as `forge generate`)
+- Docker — running locally
 
 ---
 
 ## What is NOT in scope
 
-- Per-expert Orleans grains — missions execute inside `PipelineRunner` unchanged
-- Multi-cluster deployment — single silo first
-- Temporal / durable workflows — not needed at this stage
-- SaaS / multi-tenant platform — self-hosted team platform is the first target
-- Inbound auth on the OAI endpoint — YAGNI, ASP.NET middleware can add this later
-- `debate {}` block — addressed in a future phase once agent-to-agent collaboration
-  is validated at the grain level
+- `forge deploy` — Forge does not call `kubectl apply`. The operator does. This is a firm boundary.
+- State backends — not Forge's concern. Developer wires their own.
+- Secrets population — Forge emits references (env var names); the operator populates values.
+- Ingress / networking — operator concern.
+- ArgoCD / Flux Application CRDs — operator's GitOps concern.
+- Multi-cluster — single manifest output; multi-cluster is the operator's routing concern.
+- Custom K8s operators or CRDs — standard K8s resources only.
 
 ---
 
@@ -382,8 +286,8 @@ is infrastructure to make that moment possible.
 
 | # | Question | Notes |
 |---|---|---|
-| 1 | Who hosts the silo? Single developer machine, team server, cloud VM? | Self-hosted team platform is the first target. Managed hosting is a later product decision. |
-| 2 | Should `forge-runtime` be a separate binary or a mode of `forge`? | Separate binary keeps the AOT `forge` clean. Mode flag (`forge serve --runtime orleans`) is simpler operationally. |
-| 3 | How are provider credentials (`apiKey`, `model`) configured in the platform? | `forge.toml` provider profiles already handle this. The platform inherits them. |
-| 4 | How does the OCI capability registry interact with the workforce manifest? | Spoke 7 scope — `[agents]` can reference both local paths and OCI URIs. |
-| 5 | Should `/v1/models` return capability metadata (description, version) beyond the name? | Useful for Open WebUI display. Could be sourced from `agent.yaml` or the OCI artifact label. |
+| 1 | What is the container image for `forge-runtime`? | The AOT `forge` binary packaged in a minimal Linux container. Needs a `Dockerfile` and a release pipeline. `ghcr.io/katasec/forge-runtime` is the natural home. |
+| 2 | How are provider credentials injected into generated manifests? | Generate env var references (`FORGE_API_KEY`, `FORGE_PROVIDER`) as `valueFrom.secretKeyRef`. Operator creates the K8s Secret. Secret name configurable in `[generate.k8s]`. |
+| 3 | Should `forge generate` emit a single combined YAML or one file per resource? | One file per resource type is more GitOps-friendly (easier to diff, review, and patch). `--combined` flag for operators who prefer a single apply. |
+| 4 | How does entity instance naming work for long ticker/entity strings? | Sanitise to DNS-label format (`toLower`, replace non-alphanumeric with `-`, truncate to 52 chars to leave room for resource type suffix). |
+| 5 | Should generated manifests include `forge generate` provenance annotations? | Yes — `forge.katasec.com/generated-by`, `forge.katasec.com/mission`, `forge.katasec.com/version` as K8s annotations. Makes manifest origin inspectable without reading the YAML content. |

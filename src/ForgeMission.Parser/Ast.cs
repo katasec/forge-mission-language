@@ -1,6 +1,6 @@
 namespace ForgeMission.Parser;
 
-// Line is 1-based; Col is 0-based — matches ANTLR token coordinates.
+// Line is 1-based; Col is 0-based.
 public record SourceSpan(int StartLine, int StartCol, int EndLine, int EndCol);
 
 public record Program(

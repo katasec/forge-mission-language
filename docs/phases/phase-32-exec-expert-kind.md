@@ -207,47 +207,26 @@ any backend.
 
 ```toml
 [execution]
-backend = "process"   # process | wasm | hyperlight
+backend = "process"
 ```
 
-### Backend 1 — `process` (local development)
+### Backend — `process`
 
 - `Process.Start` with `UseShellExecute = false`
 - Explicit executable + argument list — never a shell string
 - stdin/stdout/stderr pipes captured
-- No isolation: filesystem, network, and subprocesses are unrestricted
-- **Intended use:** local development, trusted first-party scripts only
+- No isolation beyond the container: filesystem, network, and subprocesses are unrestricted
+- **Intended use:** all current MCL workloads — local dev and production via K8s
 
-**Security note — must be documented clearly:** The process backend provides no
-sandbox. An executable can read/write any filesystem path, make network calls, and
-spawn child processes. This is explicitly a trusted-code-only mode. For shared or
-production environments, use the `wasm` or `hyperlight` backend.
+**Security note:** The process backend provides no in-process sandbox. In production,
+isolation is provided by the K8s pod boundary — each expert runs inside a container
+with whatever filesystem, network policy, and resource limits the operator configures
+on the pod. This is the standard K8s security model and is sufficient for MCL's
+current use cases. WASM and Hyperlight sandboxing are not in scope; K8s-native
+solutions (seccomp, AppArmor, network policies) cover these concerns from the
+operator side.
 
 AOT note: `Process.Start` is AOT-safe. No reflection involved.
-
-### Backend 2 — `wasm` (sandboxed, general production)
-
-- Execute WASM/WASI modules via Wasmtime (or WAMR as alternative)
-- WASI capability-based security: filesystem and network access only if explicitly
-  granted in the backend config
-- No VT-x requirement — runs on any host
-- Supports Python (Pyodide/wasm32-wasi), Go (WASM target), Rust, C
-- Can run in-process (lower overhead) or as a subprocess
-
-**Intended use:** general production environments; third-party expert scripts; shared
-platform deployments where process isolation is required without VT-x.
-
-### Backend 3 — `hyperlight` (hardware VM isolation)
-
-- Hardware-backed micro-VM isolation via Microsoft Hyperlight
-- Disposable execution environment per invocation
-- Appropriate for AI-generated analysis scripts or fully untrusted code
-- Requires VT-x/AMD-V (not available in all cloud environments — nested virtualisation
-  varies by provider)
-- Guest runtime support depends on Hyperlight's current language matrix
-
-**Intended use:** maximum isolation scenarios; AI-generated code execution; multi-tenant
-Forge Runtime deployments (Phase 31) where tenant code must not cross boundaries.
 
 ---
 
@@ -296,6 +275,38 @@ Add `kind: exec` support to `ExpertFrontmatter` and `ExpertDefinition`:
   leaves system tool names as-is for PATH resolution at runtime
 - Error messages follow existing `ExpertLoadException` pattern with field name + guidance
 
+**Requisite design consideration — resource requirements:**
+Process experts that bundle HuggingFace vision models, classification models, or other
+GPU-accelerated inference scripts need GPU access that a plain `Process.Start` does not
+provide. This is the same problem K8s solves with node affinity and taints
+(`nvidia.com/gpu=present:NoSchedule` + toleration + resource limit), and GHA solves with
+runner labels (`runs-on: [self-hosted, gpu, linux]`): the **workload declares what it needs;
+the scheduler matches it to capable infrastructure.**
+
+The expert frontmatter should support a `resources` block from day one — even if the
+process backend ignores it initially — so OCI-distributed experts can declare their
+requirements and the Forge Runtime (Phase 31) can route or reject accordingly:
+
+```markdown
+---
+name: VisualClassifier
+kind: exec
+executable: ./infer.py
+runtime: python3
+inputs: [image_path]
+outputKey: classification
+resources:
+  gpu: "8Gi"      # specific memory requirement (production)
+  # gpu: any      # GPU required, no memory constraint (dev/test)
+  # gpu: none     # no GPU needed (default — omitting resources is equivalent)
+---
+```
+
+Without this, a GPU-dependent expert silently fails mid-inference with an opaque CUDA
+error rather than a clear scheduling rejection. The process backend should emit a warning
+at `forge validate` time if `resources.gpu: true` is declared but no GPU runtime is
+configured. See Design Question #11.
+
 ### Spoke 2 — Input/output contract
 
 Implement the JSON stdin/stdout contract:
@@ -326,23 +337,7 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
 - Enforce timeout via `CancellationToken` + `Process.Kill`
 - Document explicitly: trusted code only, local development only
 
-### Spoke 5 — WASM backend
-
-`WasmExecBackend` via Wasmtime:
-- WASI capability grants configurable in `forge.toml` per expert or globally
-- Stdin/stdout/stderr mapped to WASI streams
-- Python support via wasm32-wasi Python build or Pyodide
-- Evaluate in-process vs subprocess execution modes (in-process preferred for latency)
-
-### Spoke 6 — Hyperlight backend
-
-`HyperlightExecBackend`:
-- Micro-VM per invocation; disposable
-- Evaluate guest runtime support matrix at time of implementation
-- Fallback: if VT-x unavailable, fail with clear error directing operator to `wasm` backend
-- Intended primarily for Phase 31 Forge Runtime multi-tenant deployments
-
-### Spoke 7 — Artifact packaging and `ExpertLoader`
+### Spoke 5 — Artifact packaging and `ExpertLoader`
 
 - `ExpertLoader` passes expert directory as working directory to backend
 - Multi-artifact expert directory support (directory is already the unit — this is
@@ -352,22 +347,17 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
 - `forge validate` checks that declared `executable` exists (local path) or is on PATH
   (system tool) and reports missing executables early
 
-### Spoke 8 — `forge.toml` execution config
+### Spoke 6 — `forge.toml` execution config
 
 ```toml
 [execution]
-backend = "process"     # process | wasm | hyperlight
-
-[execution.wasm]
-allow_filesystem = false
-allow_network = false
-filesystem_roots = []   # explicit grants
-
-[execution.process]
-# no isolation options — trusted code only, documented as such
+backend = "process"
 ```
 
-Backend selection is operator-level config. Expert authors are isolated from it.
+That is the complete config. Backend selection is operator-level; expert authors are
+isolated from it. Isolation beyond the container boundary is a K8s concern — seccomp
+profiles, AppArmor, network policies, and resource limits are configured on the pod
+spec in the generated manifests, not in forge.toml.
 
 ---
 
@@ -381,10 +371,11 @@ Backend selection is operator-level config. Expert authors are isolated from it.
 | 4 | **Executable dependency installation** — for expert-packaged scripts, who installs `requirements.txt` / Go modules? | Options: `forge init` handles it, user handles it, runtime handles it lazily on first activation. `forge init` is consistent with the existing init-time resolution pattern. |
 | 5 | **System tool discovery** — should `forge validate` verify system-installed executables are on PATH, or defer to runtime? | Fail early is MCL's principle. `forge validate` should check PATH for non-`./` executables and warn if missing. |
 | 6 | **Timeout granularity** — global default in `[execution]` or per-expert in frontmatter, or both? | Both: global default in `forge.toml`, per-expert override in frontmatter. The expert author knows the expected runtime better than the operator. |
-| 7 | **AOT implications for WASM and Hyperlight backends** — embedding Wasmtime or Hyperlight in a `PublishAot` binary may require investigation | These backends likely live in `ForgeMission.Platform` (Phase 31, non-AOT) rather than the AOT CLI binary. The process backend is AOT-safe. The AOT binary supports only `process`; the platform binary adds `wasm` and `hyperlight`. |
+| 7 | **AOT safety** — the process backend uses `Process.Start` which is AOT-safe. No further AOT investigation needed for the current backend. | Resolved — `process` only, AOT-safe by construction. |
 | 8 | **`kind: exec` vs `kind: http` boundary** — when should an author choose exec over http? | `http` = pre-deployed, long-running service. `exec` = packaged, per-invocation, hermetic. The author guide should make this explicit. |
 | 9 | **Streaming from exec** — should a long-running executable stream output lines back as step progress? | Process backend can stream stderr lines as progress indicators. stdout result is only available on exit. True streaming (interleaved results) deferred — not needed for v1. |
 | 10 | **Security model documentation** — how prominently should the process backend's "trusted code only" constraint be surfaced? | `forge validate` should emit a warning when `kind: exec` expert is used with the process backend. Opt-out: `trusted: true` in frontmatter silences the warning. |
+| 11 | **Resource requirement declaration** — should the frontmatter support a `resources` block (`gpu`, `gpu_memory`, `cpu`, `memory`) so the runtime can match experts to capable hosts, analogous to K8s node affinity or GHA runner labels? | Yes — declare the field in v1 frontmatter even if only the process backend ignores it. The Forge Runtime (Phase 31) needs it for routing. `forge validate` warns if `gpu: true` is set but no GPU runtime is configured. nvidia-container-runtime, driver compatibility, and device passthrough are operator concerns; the expert author just declares the requirement. `gpu` should accept `none` or `any` in addition to `true`/`false` — `none` means no GPU required (default), `any` means GPU required but no specific memory constraint. This makes local dev/test easy: authors set `any` when they need a GPU but don't want to pin a size, and the process backend treats `any` as a passthrough warning rather than a hard rejection. |
 
 ---
 
@@ -395,15 +386,16 @@ Backend selection is operator-level config. Expert authors are isolated from it.
 - Binary data over stdin/stdout (JSON only in v1)
 - Distributed execution (exec runs on the same host as the Forge process)
 - Per-expert backend override (backend is operator config, not author config)
-- WASM or Hyperlight in the AOT CLI binary — those backends live in the platform tier
+- WASM sandboxing — K8s-native solutions (seccomp, AppArmor, network policies) cover this from the operator side
+- Hyperlight — not in scope; the K8s pod boundary is the isolation primitive
 
 ---
 
-## Connection to Phase 31 (Forge Runtime Platform)
+## Connection to Phase 31 (Forge Generate & Capability Packaging)
 
-Executable experts compound with the platform vision. A hosted `security-audit`
-capability in the Forge Runtime workforce that runs real static analysis (`semgrep`,
-custom scanners) and reasons over actual evidence is a fundamentally different product
-from one that only does LLM reasoning. The `wasm` and `hyperlight` backends are
-particularly relevant for Phase 31 multi-tenant deployments where tenant-authored
-executable experts must not cross isolation boundaries.
+Executable experts compound with the deployment story. A `security-audit` capability
+packaged as an OCI artifact that runs real static analysis (`semgrep`, custom scanners)
+and reasons over actual evidence is a fundamentally different product from one that
+only does LLM reasoning. The `resources:` block in expert frontmatter (Spoke 1) is
+the source of truth that `forge generate` reads to emit the correct K8s node affinity
+and resource limits for GPU-dependent experts.

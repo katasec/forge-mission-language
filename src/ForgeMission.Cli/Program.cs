@@ -51,7 +51,7 @@ static Command BuildInitCommand()
         var source = await TryReadFile(mission.FullName);
         if (source is null) return;
 
-        var ast = TryParse(source);
+        var ast = TryParse(source, mission.FullName);
         if (ast is null) return;
 
         ForgeManifest? manifest = null;
@@ -151,7 +151,7 @@ static Command BuildRunCommand()
         var source = await TryReadFile(mission.FullName);
         if (source is null) return;
 
-        var ast = TryParse(source);
+        var ast = TryParse(source, mission.FullName);
         if (ast is null) return;
 
         ForgeManifest? manifest = null;
@@ -190,7 +190,7 @@ static Command BuildRunCommand()
 
         if (missionResult.Status == MissionStatus.Fail)
         {
-            Console.Error.WriteLine($"error: mission failed — {missionResult.FailReason}");
+            Console.Error.WriteLine($"{BoldRed("error")}{Bold($": mission failed — {missionResult.FailReason}")}");
             Environment.Exit(1);
             return;
         }
@@ -229,7 +229,7 @@ static Command BuildValidateCommand()
         var source = await TryReadFile(mission.FullName);
         if (source is null) return;
 
-        var ast = TryParse(source);
+        var ast = TryParse(source, mission.FullName);
         if (ast is null) return;
 
         // Validate forge.toml if present
@@ -239,7 +239,7 @@ static Command BuildValidateCommand()
         // Warn if lock file is absent or stale
         if (!File.Exists(lockPath))
         {
-            Console.Error.WriteLine("warning: MCL006 mcl.lock not found — run 'forge init' to generate it");
+            Console.Error.WriteLine($"{BoldYellow("warning")}{Bold(": MCL006 mcl.lock not found — run 'forge init' to generate it")}");
         }
         if (!File.Exists(lockPath))
         {
@@ -392,7 +392,7 @@ static Command BuildServeCommand()
         var source = await TryReadFile(missionPath);
         if (source is null) return;
 
-        var ast = TryParse(source);
+        var ast = TryParse(source, missionPath);
         if (ast is null) return;
 
         // OCI expert validation moved to forge.toml (Spoke 2).
@@ -488,11 +488,51 @@ static async Task<string?> TryReadFile(string path)
     catch (Exception ex) { Die($"Cannot read file '{path}': {ex.Message}"); return null; }
 }
 
-static MclProgram? TryParse(string source)
+static MclProgram? TryParse(string source, string filePath)
 {
-    try { return MclParser.Parse(source); }
-    catch (ParseException ex) { Die(ex.Message); return null; }
+    var result = MclParser.TryParse(source);
+    if (!result.Success)
+    {
+        foreach (var d in result.Diagnostics)
+            ReportDiagnostic(source, filePath, d);
+        Environment.Exit(1);
+        return null;
+    }
+    return result.Ast!;
 }
+
+static void ReportDiagnostic(string source, string filePath, Diagnostic d)
+{
+    var lines      = source.Split('\n');
+    var sourceLine = d.Line >= 1 && d.Line <= lines.Length
+        ? lines[d.Line - 1].TrimEnd('\r')
+        : string.Empty;
+
+    var lineNumStr = d.Line.ToString();
+    var gutter     = new string(' ', lineNumStr.Length);
+    var col        = Math.Max(0, d.Column);
+    var caretLen   = d.EndColumn > d.Column ? d.EndColumn - d.Column : 1;
+    var carets     = new string('^', caretLen);
+    var spaces     = new string(' ', Math.Min(col, sourceLine.Length));
+
+    var e = Console.Error;
+    e.WriteLine($"{BoldRed("error")}{Bold($": {d.Message}")}");
+    e.WriteLine($"  {BoldBlue("-->")} {filePath}:{d.Line}:{col + 1}");
+    e.WriteLine($"{BoldBlue($"{gutter}   |")}");
+    e.WriteLine($"{BoldBlue($"{lineNumStr}   |")} {sourceLine}");
+    e.WriteLine($"{BoldBlue($"{gutter}   |")} {spaces}{BoldRed(carets)}");
+    e.WriteLine($"{BoldBlue($"{gutter}   |")}");
+}
+
+// ANSI helpers — bold+color when stderr is a terminal and NO_COLOR is unset
+static bool UseAnsi() =>
+    !Console.IsErrorRedirected &&
+    Environment.GetEnvironmentVariable("NO_COLOR") is null;
+
+static string Bold(string s)       => UseAnsi() ? $"\x1b[1m{s}\x1b[0m"    : s;
+static string BoldRed(string s)    => UseAnsi() ? $"\x1b[1;31m{s}\x1b[0m" : s;
+static string BoldYellow(string s) => UseAnsi() ? $"\x1b[1;33m{s}\x1b[0m" : s;
+static string BoldBlue(string s)   => UseAnsi() ? $"\x1b[1;34m{s}\x1b[0m" : s;
 
 static Dictionary<string, ExpertDefinition>? TryLoadExperts(string expertsDir)
 {
@@ -600,7 +640,7 @@ static FileInfo ResolveMission(FileInfo? arg)
 
 static void Die(string message)
 {
-    Console.Error.WriteLine($"error: {message}");
+    Console.Error.WriteLine($"{BoldRed("error")}{Bold($": {message}")}");
     Environment.Exit(1);
 }
 

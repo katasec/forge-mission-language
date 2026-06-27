@@ -2,7 +2,7 @@ using Antlr4.Runtime;
 
 namespace ForgeMission.Parser;
 
-public record Diagnostic(string Message, int Line, int Column);
+public record Diagnostic(string Message, int Line, int Column, int EndColumn = -1);
 
 public record ParseResult(Program? Ast, IReadOnlyList<Diagnostic> Diagnostics)
 {
@@ -64,7 +64,7 @@ file sealed class DiagnosticErrorListener(List<Diagnostic> diagnostics)
         int offendingSymbol, int line, int col, string msg,
         Antlr4.Runtime.RecognitionException e)
     {
-        diagnostics.Add(new Diagnostic(msg, line, col));
+        diagnostics.Add(new Diagnostic(msg, line, col, col + 1));
     }
 
     // Called by the parser (offending symbol is an IToken)
@@ -73,10 +73,29 @@ file sealed class DiagnosticErrorListener(List<Diagnostic> diagnostics)
         IToken offendingSymbol, int line, int col, string msg,
         Antlr4.Runtime.RecognitionException e)
     {
-        var message = offendingSymbol?.Type == MclGrammarLexer.LOWER_ID
-            ? $"'{offendingSymbol.Text}' is not valid here — expert and mission names must be PascalCase"
-            : msg;
+        var message = offendingSymbol?.Type switch
+        {
+            MclGrammarLexer.FAT_ARROW =>
+                "'=>' is not a valid operator — use '->' to connect pipeline steps",
 
-        diagnostics.Add(new Diagnostic(message, line, col));
+            MclGrammarLexer.LOWER_ID when InMissionRule(recognizer) =>
+                $"'{offendingSymbol!.Text}' is not valid here — did you mean to wrap parameters in parentheses? e.g. mission Name({offendingSymbol.Text})",
+
+            MclGrammarLexer.LOWER_ID =>
+                $"'{offendingSymbol!.Text}' is not valid here — expert and mission names must be PascalCase",
+
+            _ => msg
+        };
+
+        var endCol = col + (offendingSymbol?.Text?.Length ?? 1);
+        diagnostics.Add(new Diagnostic(message, line, col, endCol));
+    }
+
+    // Returns true when the error occurs directly inside the mission rule —
+    // distinguishes a missing-parens mistake from a lowercase expert name in a pipeline.
+    private static bool InMissionRule(IRecognizer recognizer)
+    {
+        return recognizer is MclGrammarParser parser
+            && parser.Context.RuleIndex == MclGrammarParser.RULE_mission;
     }
 }

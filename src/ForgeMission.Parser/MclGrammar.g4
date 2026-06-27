@@ -99,6 +99,7 @@ OUTPUT   : 'output'   ;
 
 INT      : [0-9]+     ;
 ARROW    : '->'       ;
+FAT_ARROW: '=>'       ;
 EQUALS   : '='        ;
 COLON    : ':'        ;
 LPAREN   : '('        ;
