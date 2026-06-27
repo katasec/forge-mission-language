@@ -445,7 +445,7 @@ response = requests.post(
 
 The reasoning pipeline — ONNX models, rule gates, multi-expert composition — is invisible to the consumer. They call an endpoint.
 
-See [`examples/python/`](examples/python/) for a working client against the Debate mission.
+See [`clients/python/`](clients/python/) for a working client against the Debate mission.
 
 ```bash
 forge agent start --agent-file <path>     # start agent container (Docker)
