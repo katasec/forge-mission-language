@@ -46,13 +46,107 @@ public class JsonExtractExpertRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_InvalidJson_ThrowsJsonException()
+    public async Task RunAsync_InvalidJson_ThrowsInvalidOperationException()
     {
         var runner  = new JsonExtractExpertRunner();
         var expert  = JsonExtractExpert();
         var context = new Dictionary<string, object> { ["output"] = "not valid json" };
 
-        await Assert.ThrowsAnyAsync<JsonException>(() => runner.RunAsync(expert, context));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync(expert, context));
+        Assert.Contains("json_extract", ex.Message);
+        Assert.Contains("neither valid JSON", ex.Message);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Mixed prose + JSON (fenced block)
+
+    [Fact]
+    public async Task RunAsync_MixedOutput_ExtractsJsonBlock()
+    {
+        var runner  = new JsonExtractExpertRunner();
+        var expert  = JsonExtractExpert();
+        var context = new Dictionary<string, object>
+        {
+            ["output"] = """
+                The code has several readability concerns, particularly around nesting.
+
+                ```json
+                {"severity": "medium", "refactor_priority": 8}
+                ```
+                """
+        };
+
+        var result = await runner.RunAsync(expert, context);
+
+        Assert.Equal("pass",     result.Status);
+        Assert.Equal("medium",   context["severity"]);
+        Assert.Equal(8.0,        (double)context["refactor_priority"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MixedOutput_ProsePreservedInOutputKey()
+    {
+        var runner  = new JsonExtractExpertRunner();
+        var expert  = JsonExtractExpert();
+        var context = new Dictionary<string, object>
+        {
+            ["output"] = """
+                The nested loop structure should be extracted into a helper function.
+
+                ```json
+                {"severity": "medium"}
+                ```
+                """
+        };
+
+        await runner.RunAsync(expert, context);
+
+        Assert.Contains("nested loop", context["output"].ToString());
+    }
+
+    [Fact]
+    public async Task RunAsync_MixedOutput_ProseAndJsonBothSides()
+    {
+        var runner  = new JsonExtractExpertRunner();
+        var expert  = JsonExtractExpert();
+        var context = new Dictionary<string, object>
+        {
+            ["output"] = """
+                Opening analysis here.
+
+                ```json
+                {"score": 7}
+                ```
+
+                Closing recommendation here.
+                """
+        };
+
+        await runner.RunAsync(expert, context);
+
+        // Both prose sections should be preserved, JSON keys extracted
+        var prose = context["output"].ToString()!;
+        Assert.Contains("Opening analysis", prose);
+        Assert.Contains("Closing recommendation", prose);
+        Assert.Equal(7.0, (double)context["score"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_PureJson_BackwardsCompatible()
+    {
+        // No fence — existing pure JSON path unchanged
+        var runner  = new JsonExtractExpertRunner();
+        var expert  = JsonExtractExpert();
+        var context = new Dictionary<string, object>
+        {
+            ["output"] = """{"label": "pass", "confidence": 0.91}"""
+        };
+
+        var result = await runner.RunAsync(expert, context);
+
+        Assert.Equal("pass",  result.Status);
+        Assert.Equal("pass",  context["label"]);
+        Assert.Equal(0.91,    (double)context["confidence"], precision: 5);
     }
 
     [Fact]

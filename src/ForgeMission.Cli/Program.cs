@@ -187,7 +187,16 @@ static Command BuildRunCommand()
 
         Console.Error.WriteLine($"Running mission '{firstMission.Name}'...");
 
-        var missionResult = await new PipelineRunner(runners).RunAsync(ast, expertDefs, options);
+        MissionResult missionResult;
+        try
+        {
+            missionResult = await new PipelineRunner(runners, manifest?.Execution).RunAsync(ast, expertDefs, options);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Die(ex.Message);
+            return;
+        }
 
         if (missionResult.Status == MissionStatus.Fail)
         {

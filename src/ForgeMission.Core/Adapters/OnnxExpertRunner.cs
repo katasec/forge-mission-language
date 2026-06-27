@@ -13,10 +13,10 @@ public class OnnxExpertRunner : IExpertRunner
         Dictionary<string, object> context,
         CancellationToken ct = default)
     {
-        var inputs  = expert.Inputs.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var features = new float[inputs.Length];
+        var inputs   = expert.Inputs ?? [];
+        var features = new float[inputs.Count];
 
-        for (var i = 0; i < inputs.Length; i++)
+        for (var i = 0; i < inputs.Count; i++)
         {
             var key = inputs[i];
             if (!context.TryGetValue(key, out var raw))
@@ -25,7 +25,7 @@ public class OnnxExpertRunner : IExpertRunner
             features[i] = Convert.ToSingle(raw);
         }
 
-        var tensor = new DenseTensor<float>(features, [1, inputs.Length]);
+        var tensor = new DenseTensor<float>(features, [1, inputs.Count]);
         var ortInputs = new List<NamedOnnxValue>
         {
             NamedOnnxValue.CreateFromTensor("input", tensor)

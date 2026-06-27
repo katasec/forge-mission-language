@@ -23,10 +23,11 @@ public static class ForgeTomlReader
 
     private static ForgeManifest Parse(string[] lines, string path)
     {
-        var experts   = new Dictionary<string, string>(StringComparer.Ordinal);
-        var providers = new Dictionary<string, ProviderProfile>(StringComparer.Ordinal);
+        var experts       = new Dictionary<string, string>(StringComparer.Ordinal);
+        var providers     = new Dictionary<string, ProviderProfile>(StringComparer.Ordinal);
+        var executionRows = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        // Track current section: "experts", "providers.<name>", or null
+        // Track current section: "experts", "providers.<name>", "execution", or null
         string? section     = null;
         string? profileName = null;
         var     profileRows = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
@@ -76,6 +77,12 @@ public static class ForgeTomlReader
                 case "providers" when profileName is not null:
                     profileRows[profileName][key] = value;
                     break;
+                case "execution":
+                    var knownExecutionKeys = new[] { "backend", "defaultTimeout" };
+                    if (!knownExecutionKeys.Contains(key))
+                        throw new ForgeTomlException($"[execution] unknown field \"{key}\"", path);
+                    executionRows[key] = value;
+                    break;
                 default:
                     // top-level keys — ignore for now (reserved for future use)
                     break;
@@ -110,7 +117,23 @@ public static class ForgeTomlReader
             };
         }
 
-        return new ForgeManifest { Experts = experts, Providers = providers };
+        // Validate and build ExecutionConfig
+        if (executionRows.TryGetValue("backend", out var backend))
+        {
+            var knownBackends = new[] { "process" };
+            if (!knownBackends.Contains(backend))
+                throw new ForgeTomlException(
+                    $"[execution] backend \"{backend}\" is not recognised. " +
+                    $"Known backends: {string.Join(", ", knownBackends)}", path);
+        }
+
+        var execution = new ExecutionConfig
+        {
+            Backend        = executionRows.GetValueOrDefault("backend",        "process"),
+            DefaultTimeout = executionRows.GetValueOrDefault("defaultTimeout", "30s"),
+        };
+
+        return new ForgeManifest { Experts = experts, Providers = providers, Execution = execution };
     }
 
     // Parses "string value", env("VAR") or env("VAR", "default"), strips surrounding quotes.

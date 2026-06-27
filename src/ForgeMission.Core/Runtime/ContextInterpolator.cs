@@ -13,7 +13,7 @@ public static partial class ContextInterpolator
         {
             var key = match.Groups[1].Value;
             return context.TryGetValue(key, out var value)
-                ? value.ToString()!
+                ? value?.ToString() ?? ""
                 : match.Value; // leave placeholder intact when key is absent
         });
 }

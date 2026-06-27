@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using ForgeMission.Core.Adapters;
 using ForgeMission.Core.Experts;
+using ForgeMission.Core.Manifest;
 using ForgeMission.Parser;
 
 namespace ForgeMission.Core.Runtime;
@@ -9,10 +10,12 @@ namespace ForgeMission.Core.Runtime;
 public class PipelineRunner
 {
     private readonly IReadOnlyDictionary<string, IExpertRunner> _runners;
+    private readonly ExecutionConfig _execution;
 
-    public PipelineRunner(IReadOnlyDictionary<string, IExpertRunner> runners)
+    public PipelineRunner(IReadOnlyDictionary<string, IExpertRunner> runners, ExecutionConfig? execution = null)
     {
-        _runners = runners;
+        _runners   = runners;
+        _execution = execution ?? new ExecutionConfig();
     }
 
     // Convenience: single default runner — keeps existing tests and callers unchanged.
@@ -204,6 +207,7 @@ public class PipelineRunner
             "rule"         => new RuleExpertRunner(),
             "onnx"         => new OnnxExpertRunner(),
             "json_extract" => new JsonExtractExpertRunner(),
+            "exec"         => new ExecExpertRunner(_execution.DefaultTimeout),
             _              => ResolveRunner(step.Using)
         };
 
@@ -211,24 +215,32 @@ public class PipelineRunner
             await sw.WriteLineAsync($"→ {step.ExpertName}...");
 
         StepEnvelope envelope;
-        if (options.StepWriter is not null || options.ContentWriter is not null)
+        try
         {
-            var sb = new StringBuilder();
-            await foreach (var chunk in runner.StreamAsync(expert, context, ct))
+            if (options.StepWriter is not null || options.ContentWriter is not null)
             {
-                if (options.StepWriter is { } sw2)
-                    await sw2.WriteAsync(chunk);
-                if (options.ContentWriter is { } cw)
-                    await cw.WriteAsync(chunk);
-                sb.Append(chunk);
+                var sb = new StringBuilder();
+                await foreach (var chunk in runner.StreamAsync(expert, context, ct))
+                {
+                    if (options.StepWriter is { } sw2)
+                        await sw2.WriteAsync(chunk);
+                    if (options.ContentWriter is { } cw)
+                        await cw.WriteAsync(chunk);
+                    sb.Append(chunk);
+                }
+                if (options.StepWriter is { } sw3)
+                    await sw3.WriteLineAsync("\n");
+                envelope = ParseStreamedEnvelope(sb.ToString());
             }
-            if (options.StepWriter is { } sw3)
-                await sw3.WriteLineAsync("\n");
-            envelope = ParseStreamedEnvelope(sb.ToString());
+            else
+            {
+                envelope = await runner.RunAsync(expert, context, ct);
+            }
         }
-        else
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            envelope = await runner.RunAsync(expert, context, ct);
+            throw new InvalidOperationException(
+                $"Step '{step.ExpertName}' failed: {ex.Message}", ex);
         }
 
         context["output"] = envelope.Text;
@@ -290,6 +302,7 @@ public class PipelineRunner
             "rule"         => new RuleExpertRunner(),
             "onnx"         => new OnnxExpertRunner(),
             "json_extract" => new JsonExtractExpertRunner(),
+            "exec"         => new ExecExpertRunner(_execution.DefaultTimeout),
             _              => ResolveRunner(step.Using)
         };
 

@@ -292,7 +292,7 @@ public class ExpertLoaderTests : IDisposable
 
     private static string OnnxExpertMarkdown(
         string? model     = "./models/iso.onnx",
-        string? inputs    = "cpu,mem",
+        string? inputs    = "[cpu, mem]",
         string? outputKey = "score",
         string? threshold = "0.85") =>
         $"""
@@ -317,7 +317,7 @@ public class ExpertLoaderTests : IDisposable
         var def = experts["AnomalyDetector"];
         Assert.Equal("onnx", def.Kind, ignoreCase: true);
         Assert.Equal("./models/iso.onnx", def.Model);
-        Assert.Equal("cpu,mem", def.Inputs);
+        Assert.Equal(["cpu", "mem"], def.Inputs);
         Assert.Equal("score", def.OutputKey);
         Assert.Equal("0.85", def.Threshold);
         Assert.True(def.IsOnnx);
@@ -376,4 +376,44 @@ public class ExpertLoaderTests : IDisposable
         Assert.Single(experts);
         Assert.Equal("KubernetesArchitect", experts["KubernetesArchitect"].Name);
     }
+
+    // ---------------------------------------------------------------------------
+    // kind:exec validation (Spoke 5)
+
+    private static string ExecExpertMarkdown(string command, string args = "") => $"""
+        ---
+        name: StaticAnalyser
+        kind: exec
+        command: {command}
+        {(string.IsNullOrEmpty(args) ? "" : $"args: [{args}]")}
+        inputs: [repo_path]
+        outputKey: findings
+        input: RepoPath
+        output: Findings
+        ---
+
+        Runs static analysis.
+        """;
+
+    private static Program ExecMission => MclParser.Parse("""
+        mission Audit = {
+            StaticAnalyser
+        }
+        """);
+
+    [Fact]
+    public void Validate_ExecExpert_PackagedScript_Exists_DoesNotThrow()
+    {
+        var expertDir = Path.Combine(_dir, "StaticAnalyser");
+        Directory.CreateDirectory(expertDir);
+        File.WriteAllText(Path.Combine(expertDir, "expert.md"), ExecExpertMarkdown("python3", "./analysis.py"));
+        File.WriteAllText(Path.Combine(expertDir, "analysis.py"), "# stub");
+
+        var experts = new ExpertLoader(_dir).LoadAll();
+        var ex      = Record.Exception(() => ExpertLoader.Validate(ExecMission, experts));
+
+        Assert.Null(ex);
+    }
+
+
 }

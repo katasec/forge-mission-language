@@ -220,4 +220,58 @@ public class ForgeTomlReaderTests
 
         Assert.Equal("openai", manifest!.Providers["default"].Provider);
     }
+
+    [Fact]
+    public void ExecutionSection_DefaultsApplied_WhenAbsent()
+    {
+        var path = WriteTempManifest("""
+            [providers.default]
+            provider = "openai"
+            model    = "gpt-4o-mini"
+            apiKey   = "sk-test"
+            """);
+
+        var manifest = ForgeTomlReader.TryRead(path);
+
+        Assert.Equal("process", manifest!.Execution.Backend);
+        Assert.Equal("30s",     manifest!.Execution.DefaultTimeout);
+    }
+
+    [Fact]
+    public void ExecutionSection_BackendAndTimeout_ParsedCorrectly()
+    {
+        var path = WriteTempManifest("""
+            [execution]
+            backend        = "process"
+            defaultTimeout = "60s"
+            """);
+
+        var manifest = ForgeTomlReader.TryRead(path);
+
+        Assert.Equal("process", manifest!.Execution.Backend);
+        Assert.Equal("60s",     manifest!.Execution.DefaultTimeout);
+    }
+
+    [Fact]
+    public void ExecutionSection_UnknownBackend_Throws()
+    {
+        var path = WriteTempManifest("""
+            [execution]
+            backend = "wasm"
+            """);
+
+        Assert.Throws<ForgeTomlException>(() => ForgeTomlReader.TryRead(path));
+    }
+
+    [Fact]
+    public void ExecutionSection_UnknownField_Throws()
+    {
+        var path = WriteTempManifest("""
+            [execution]
+            backend    = "process"
+            sandboxing = "true"
+            """);
+
+        Assert.Throws<ForgeTomlException>(() => ForgeTomlReader.TryRead(path));
+    }
 }

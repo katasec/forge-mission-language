@@ -1,0 +1,22 @@
+version: 1
+experts:
+  CodeAnalyser:
+    source: experts
+    path: experts/CodeAnalyser/expert.md
+    hash: a8e404bdc379ee6995e1983d7aa753aa150c2eff4477e44bc817e4e9f0e2e8d2
+  CodeReviewer:
+    source: experts
+    path: experts/CodeReviewer/expert.md
+    hash: 85c7a48818636f1fa39650390a9d14a2aa27c9b3ac02e26f92facb7ccc4b8c2e
+  FindingsExtractor:
+    source: experts
+    path: experts/FindingsExtractor/expert.md
+    hash: ec5f34e9d53f24f7bfc50d5394c5832a4565a4504891941cf41bcfef4867e8cb
+  MetricsExtractor:
+    source: experts
+    path: experts/MetricsExtractor/expert.md
+    hash: 99e06f6915cb84514b7b1281ad2388f35bbb48d74df7bff5f08352b18819787e
+  ReportWriter:
+    source: experts
+    path: experts/ReportWriter/expert.md
+    hash: e6989fc9c9edd8ae25e1c138533dbd6f461318101d2da3d13054428af6b4a93b

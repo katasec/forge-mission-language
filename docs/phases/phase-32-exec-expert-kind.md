@@ -100,8 +100,9 @@ execution is required internally.
 ---
 name: StaticAnalyser
 kind: exec
-executable: ./analysis.py
-runtime: python3
+command: python3
+args: ./analysis.py
+
 inputs: [repo_path, language, ruleset]
 outputKey: findings
 timeout: 30s
@@ -112,8 +113,8 @@ Runs static analysis against the target repository and returns structured findin
 
 | Field | Required | Description |
 |---|---|---|
-| `executable` | Yes | Path to script/binary, relative to expert directory. Or a system-installed tool name (no `./` prefix). |
-| `runtime` | No | Interpreter/runtime: `python3`, `node`, `go run`, etc. Omit for native binaries. |
+| `command` | Yes | Path to script/binary, relative to expert directory. Or a system-installed tool name (no `./` prefix). |
+| `args` | No | Interpreter/runtime: `python3`, `node`, `go run`, etc. Omit for native binaries. |
 | `inputs` | Yes | Comma-separated context bag keys to pass as input JSON. |
 | `outputKey` | Yes | Context bag key to write the result into. |
 | `timeout` | No | Execution timeout. Default: `30s`. |
@@ -244,7 +245,7 @@ experts/StaticAnalyser/
 ```
 
 The `ExpertLoader` must:
-1. Resolve `executable` paths relative to the expert's directory
+1. Resolve `command` paths relative to the expert's directory
 2. Pass the expert directory as the `WorkingDirectory` to the backend
 3. Not validate or inspect executable content — that is the backend's concern
 
@@ -254,7 +255,8 @@ Three valid sources for the executable, in order of hermeticity:
 
 | Source | Syntax | Notes |
 |---|---|---|
-| Expert-packaged | `executable: ./analysis.py` | Hermetic; versioned with expert; ideal for OCI distribution |
+| Expert-packaged | `command: python3
+args: ./analysis.py` | Hermetic; versioned with expert; ideal for OCI distribution |
 | System-installed | `executable: semgrep` | No `./` prefix; resolved from PATH; practical for dev tooling |
 | OCI-pulled | TBD | Cleanest for platform; aligns with Phase 11 expert sourcing model |
 
@@ -269,9 +271,9 @@ capabilities in Forge Runtime (Phase 31) — the expert is self-contained.
 ### Spoke 1 — Frontmatter and validation
 
 Add `kind: exec` support to `ExpertFrontmatter` and `ExpertDefinition`:
-- New fields: `executable`, `runtime`, `inputs`, `outputKey`, `timeout`
-- `ExpertLoader` validation: if `kind == "exec"`, require `executable`, `inputs`, `outputKey`
-- `ExpertLoader` resolves `executable` path relative to expert directory for `./` paths;
+- New fields: `command`, `args`, `inputs`, `outputKey`, `timeout`
+- `ExpertLoader` validation: if `kind == "exec"`, require `command`, `inputs`, `outputKey`
+- `ExpertLoader` resolves `command` path relative to expert directory for `./` paths;
   leaves system tool names as-is for PATH resolution at runtime
 - Error messages follow existing `ExpertLoadException` pattern with field name + guidance
 
@@ -292,7 +294,7 @@ requirements and the Forge Runtime (Phase 31) can route or reject accordingly:
 name: VisualClassifier
 kind: exec
 executable: ./infer.py
-runtime: python3
+
 inputs: [image_path]
 outputKey: classification
 resources:
@@ -330,7 +332,7 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
 
 `ProcessExecBackend`:
 - `Process.Start` with `UseShellExecute = false`, `RedirectStandardInput/Output/Error = true`
-- Build argv correctly: `runtime` is the executable, `executable` is first argument (for
+- Build argv correctly: `args` is the executable, `command` is first argument (for
   interpreted scripts); omit runtime for native binaries
 - Write input JSON to stdin; close stdin after write
 - Read stdout and stderr concurrently (avoid deadlock on full pipe buffers)
@@ -344,7 +346,7 @@ Implements `IExpertRunner`. Dispatches to `IExecBackend`. Wraps result in `StepE
   primarily a documentation and validation change)
 - `forge init` resolves executable dependencies for expert-packaged scripts (e.g.
   `requirements.txt` → `pip install`) — design TBD
-- `forge validate` checks that declared `executable` exists (local path) or is on PATH
+- `forge validate` checks that declared `command` exists (local path) or is on PATH
   (system tool) and reports missing executables early
 
 ### Spoke 6 — `forge.toml` execution config

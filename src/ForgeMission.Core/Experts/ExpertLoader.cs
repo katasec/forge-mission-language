@@ -10,6 +10,7 @@ namespace ForgeMission.Core.Experts;
 public class ExpertLoader(string expertsDirectory)
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ExpertFrontmatter))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(List<string>))]
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Type preserved via DynamicDependency")]
     private static readonly IDeserializer Yaml = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -98,6 +99,7 @@ public class ExpertLoader(string expertsDirectory)
             throw new ExpertLoadException(
                 $"Missing expert definitions for: {string.Join(", ", missing)}. " +
                 "Each expert must have a matching markdown file in the experts directory.");
+
     }
 
     private static IEnumerable<string> GetStepNames(Pipeline pipeline)
@@ -158,7 +160,7 @@ public class ExpertLoader(string expertsDirectory)
         {
             if (string.IsNullOrWhiteSpace(meta.Model))
                 errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:onnx but is missing required field 'model'.", path, kindLine.line, kindLine.col, kindLine.endCol));
-            if (string.IsNullOrWhiteSpace(meta.Inputs))
+            if (meta.Inputs.Count == 0)
                 errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:onnx but is missing required field 'inputs'.", path, kindLine.line, kindLine.col, kindLine.endCol));
             if (string.IsNullOrWhiteSpace(meta.OutputKey))
                 errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:onnx but is missing required field 'outputKey'.", path, kindLine.line, kindLine.col, kindLine.endCol));
@@ -166,11 +168,23 @@ public class ExpertLoader(string expertsDirectory)
                 errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:onnx but is missing required field 'threshold'.", path, kindLine.line, kindLine.col, kindLine.endCol));
         }
 
+        if (meta.Kind.Equals("exec", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(meta.Command))
+                errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:exec but is missing required field 'command'.", path, kindLine.line, kindLine.col, kindLine.endCol));
+            if (meta.Inputs.Count == 0)
+                errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:exec but is missing required field 'inputs'.", path, kindLine.line, kindLine.col, kindLine.endCol));
+            if (string.IsNullOrWhiteSpace(meta.OutputKey))
+                errors.Add(new ExpertLoadException($"Expert '{expertName}' has kind:exec but is missing required field 'outputKey'.", path, kindLine.line, kindLine.col, kindLine.endCol));
+        }
+
         if (errors.Count > 0)
             throw new AggregateExpertLoadException(errors);
 
         return new ExpertDefinition(meta.Name, meta.Input, meta.Output, body.Trim(), meta.Role, meta.Kind,
-            meta.Endpoint, meta.Check, meta.OnFail, meta.Model, meta.Inputs, meta.OutputKey, meta.Threshold);
+            meta.Endpoint, meta.Check, meta.OnFail, meta.Model, meta.Inputs, meta.OutputKey, meta.Threshold,
+            meta.Command, meta.Args, meta.Timeout,
+            ExpertDirectory: Path.GetDirectoryName(path) ?? "");
     }
 
     // Returns (frontmatter text, body text, 1-based line number of the first frontmatter line in the file).
@@ -219,17 +233,20 @@ public class ExpertLoader(string expertsDirectory)
 
     private class ExpertFrontmatter
     {
-        public string Name      { get; set; } = "";
-        public string Input     { get; set; } = "";
-        public string Output    { get; set; } = "";
-        public string Role      { get; set; } = "";
-        public string Kind      { get; set; } = "llm";
-        public string Endpoint  { get; set; } = "";
-        public string Check     { get; set; } = "";
-        public string OnFail    { get; set; } = "";
-        public string Model     { get; set; } = "";
-        public string Inputs    { get; set; } = "";
-        public string OutputKey { get; set; } = "";
-        public string Threshold { get; set; } = "";
+        public string       Name      { get; set; } = "";
+        public string       Input     { get; set; } = "";
+        public string       Output    { get; set; } = "";
+        public string       Role      { get; set; } = "";
+        public string       Kind      { get; set; } = "llm";
+        public string       Endpoint  { get; set; } = "";
+        public string       Check     { get; set; } = "";
+        public string       OnFail    { get; set; } = "";
+        public string       Model     { get; set; } = "";
+        public List<string> Inputs    { get; set; } = [];
+        public string       OutputKey { get; set; } = "";
+        public string       Threshold { get; set; } = "";
+        public string       Command   { get; set; } = "";
+        public List<string> Args      { get; set; } = [];
+        public string       Timeout   { get; set; } = "";
     }
 }
