@@ -1,10 +1,20 @@
 @inject MissionService Mission
+@inject MissionRegistry Registry
 @inject SessionStore Store
 @implements IDisposable
 
 <div class="chat-shell">
     <div class="chat-topbar">
         <span class="chat-title">Forge</span>
+        <select class="mission-picker"
+                value="@_selectedIndex"
+                @onchange="OnMissionChanged"
+                disabled="@_running">
+            @for (var i = 0; i < Registry.Missions.Count; i++)
+            {
+                <option value="@i">@Registry.Missions[i].Label</option>
+            }
+        </select>
         @if (Store.Current.Messages.Any())
         {
             var last = Store.Current.Messages.Last();
@@ -20,6 +30,10 @@
                 <div class="agent-card @(msg.Trust?.Verified == true ? "card-verified" : "card-unverified")">
                     <div class="agent-card-header">
                         <TrustSignalBadge Signal="msg.Trust" />
+                        @if (!string.IsNullOrEmpty(msg.MissionLabel))
+                        {
+                            <span class="mission-label">@msg.MissionLabel</span>
+                        }
                         @if (msg.Trace.Count > 0)
                         {
                             <button class="show-thinking" @onclick="() => ToggleTrace(msg)">
@@ -60,14 +74,33 @@
 </div>
 
 @code {
-    private string _input = "";
+    private string _input         = "";
     private bool   _running;
+    private int    _selectedIndex = 0;
     private readonly List<PipelineTraceEvent> _liveTrace = [];
     private readonly HashSet<ChatMessage>     _expanded  = [];
 
-    protected override void OnInitialized() => Store.Changed += OnStoreChanged;
-    public void Dispose()                   => Store.Changed -= OnStoreChanged;
-    private void OnStoreChanged()           => InvokeAsync(StateHasChanged);
+    protected override void OnInitialized()
+    {
+        Store.Changed += OnStoreChanged;
+        if (Store.Current.Mission is { } m)
+        {
+            var idx = Registry.Missions.ToList().IndexOf(m);
+            if (idx >= 0) _selectedIndex = idx;
+        }
+    }
+
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+    private void OnStoreChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnMissionChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var idx))
+        {
+            _selectedIndex        = idx;
+            Store.Current.Mission = Registry.Missions[idx];
+        }
+    }
 
     private async Task SendAsync()
     {
@@ -78,7 +111,10 @@
         _liveTrace.Clear();
         StateHasChanged();
 
-        var result = await Mission.RunAsync(text, OnStep);
+        var selectedMission   = Registry.Missions[_selectedIndex];
+        Store.Current.Mission = selectedMission;
+
+        var result = await Mission.RunAsync(text, selectedMission, OnStep);
         Store.Current.Messages.Add(result);
         Store.Save();
         _running = false;

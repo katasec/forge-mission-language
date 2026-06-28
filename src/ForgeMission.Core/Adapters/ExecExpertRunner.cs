@@ -91,7 +91,19 @@ public class ExecExpertRunner(string defaultTimeout = "30s") : IExpertRunner
         context[expert.OutputKey] = outputText;
         context["output"]         = outputText;
 
-        return new StepEnvelope(outputText);
+        var status = root.TryGetProperty("status", out var sv) ? sv.GetString() : null;
+        var reason = root.TryGetProperty("reason",  out var rv) ? rv.GetString() : null;
+
+        // For judge experts that fail, write feedback so the next loop iteration can use it.
+        if (expert.IsJudge && status == "fail")
+        {
+            var feedback = !string.IsNullOrWhiteSpace(reason)   ? reason
+                         : !string.IsNullOrWhiteSpace(expert.OnFail) ? expert.OnFail
+                         : "Verification failed.";
+            context["feedback"] = feedback;
+        }
+
+        return new StepEnvelope(outputText, status ?? "pass", reason);
     }
 
     public async IAsyncEnumerable<string> StreamAsync(

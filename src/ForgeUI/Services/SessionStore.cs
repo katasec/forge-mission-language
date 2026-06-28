@@ -9,6 +9,7 @@ public class Session
     public List<ChatMessage>   Messages  { get; } = [];
     public string              Title     => Messages.FirstOrDefault()?.UserText ?? "New session";
     public TrustSignal?        LastTrust => Messages.LastOrDefault()?.Trust;
+    public MissionEntry?       Mission   { get; set; }
 }
 
 public class SessionStore

@@ -1,44 +1,36 @@
-using ForgeMission.Cli;
-using ForgeMission.Core.Adapters;
 using ForgeMission.Core.Manifest;
-using ForgeMission.Core.Resolution;
-using ForgeMission.Core.Runtime;
-using ForgeMission.Parser;
 using ForgeUI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-// Load the mission once at startup.
-var missionPath = builder.Configuration["MissionPath"]
-    ?? Path.Combine(Directory.GetCurrentDirectory(), "mission.mcl");
+// Resolve API key from env (set MCL_API_KEY in your shell profile).
+var missionDir = builder.Configuration["MissionDir"]
+    ?? Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "missions");
+missionDir = Path.GetFullPath(missionDir);
 
-var missionDir = Path.GetDirectoryName(Path.GetFullPath(missionPath))!;
-var source     = await File.ReadAllTextAsync(missionPath);
-var ast        = MclParser.Parse(source);
-var lockPath   = Path.Combine(missionDir, "mcl.lock");
-var lockFile   = LockFileIO.Read(lockPath);
-var expertDefs = ExpertResolver.ResolveAll(lockFile, missionDir, verbose: null, warnings: Console.Error);
+// Read key from the first forge.toml that has one, or fall back to empty.
+var apiKey = ForgeTomlReader.TryRead(Path.Combine(missionDir, "hallucination-guard", "mission.mcl"))
+                 ?.Providers?.GetValueOrDefault("default")?.ApiKey
+             ?? string.Empty;
 
-// Build LLM runner from forge.toml if present; fall back to exec stub.
-IExpertRunner defaultRunner;
-var manifest = ForgeTomlReader.TryRead(missionPath);
-if (manifest?.Providers is { Count: > 0 } providers &&
-    providers.TryGetValue("default", out var profile))
+var keyPrefix = apiKey is { Length: > 10 } ? apiKey[..10] + "..." : "(empty)";
+Console.Error.WriteLine($"ForgeUI: API key length = {apiKey.Length}, prefix = {keyPrefix}");
+if (string.IsNullOrWhiteSpace(apiKey))
 {
-    defaultRunner = ProviderClientBuilder.Build(profile);
-}
-else
-{
-    defaultRunner = new ExecExpertRunner();
-    Console.Error.WriteLine("ForgeUI: no forge.toml provider found — LLM experts will not work.");
+    Console.Error.WriteLine("ForgeUI: API key is empty — set MCL_API_KEY and restart.");
+    return;
 }
 
-builder.Services.AddSingleton(ast);
-builder.Services.AddSingleton(expertDefs);
-builder.Services.AddSingleton<IExpertRunner>(defaultRunner);
+var registry = await MissionRegistry.LoadAsync(
+[
+    ("ChatGPT",  "Raw LLM — no verification",                    Path.Combine(missionDir, "vanilla",             "mission.mcl")),
+    ("Forge",    "LLM + deterministic verifier, retries on fail", Path.Combine(missionDir, "hallucination-guard", "mission.mcl")),
+],
+apiKey);
+
+builder.Services.AddSingleton(registry);
 builder.Services.AddScoped<MissionService>();
 builder.Services.AddScoped<SessionStore>();
 

@@ -1,6 +1,5 @@
 mission HallucinationGuard(goal) loop(3) = {
     Answerer
-    -> FactChecker
     -> Verifier
 }
 

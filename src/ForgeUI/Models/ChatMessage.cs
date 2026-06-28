@@ -4,5 +4,6 @@ public record ChatMessage(
     string                   UserText,
     string?                  AgentText,
     TrustSignal?             Trust,
-    List<PipelineTraceEvent> Trace
+    List<PipelineTraceEvent> Trace,
+    string?                  MissionLabel = null
 );
