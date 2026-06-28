@@ -125,6 +125,7 @@ proven, and now anyone can use it."
 | [Spoke 7](phase-30-spoke-7-hallucination-reduction.md) | Hallucination Reduction via Symbolic Grounding | Marcus neurosymbolic thesis; RLSF 2024 | Gary Marcus (Substack); IBM neurosymbolic | Brainstorm |
 | [Spoke 8](phase-30-spoke-8-verifiable-reasoning.md) | Verifiable Step-by-Step Reasoning | AlphaGeometry (DeepMind, 2024/2025); AlphaProof | DeepMind blog; Marcus on hybrid provers | Brainstorm |
 | [Spoke 9](phase-30-spoke-9-compositionality.md) | Compositionality — Novel Tasks from Primitives | "Faith and Fate" (2024); CoE (2024) | BAIR compound AI; Marcus on embeddings | Brainstorm |
+| [Spoke 10](phase-30-spoke-10-program-synthesis.md) | Program Synthesis — Dynamic Mission Generation | AlphaCode (DeepMind, 2022); PAL (Gao et al., 2022); Self-Debugging (Chen et al., 2023) | Marcus & Belle, AAAI 2025 | Design |
 
 ---
 
