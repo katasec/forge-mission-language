@@ -99,10 +99,11 @@ public class ExecExpertRunner(string defaultTimeout = "30s") : IExpertRunner
         Dictionary<string, object> context,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        // Process backend produces output only on exit; yield the serialised envelope so
-        // PipelineRunner.ParseStreamedEnvelope can reconstruct status and text correctly.
+        // Process backend produces output only on exit; no true streaming for exec.
+        // Yield only envelope.Text — not the JSON envelope — so content writers (Open WebUI,
+        // CLI) receive plain text. ParseStreamedEnvelope handles non-JSON as a pass envelope.
         var envelope = await RunAsync(expert, context, ct);
-        yield return JsonSerializer.Serialize(envelope, ExecEnvelopeSerializerContext.Default.StepEnvelope);
+        yield return envelope.Text ?? string.Empty;
     }
 
     // Serialise the declared inputs keys from the context bag to a JSON object.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "what-is-next": {
+      "command": "/Users/ameerdeen/.local/bin/forge-mcp",
+      "args": ["/Users/ameerdeen/progs/mission-control-language/missions/what-is-next/mission.mcl"]
+    }
+  }
+}

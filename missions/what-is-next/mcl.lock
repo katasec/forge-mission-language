@@ -1,0 +1,10 @@
+version: 1
+experts:
+  ContextLoader:
+    source: experts
+    path: experts/ContextLoader/expert.md
+    hash: ee97dd4fe56e252022dacc63b61088f10d8e01e0eec6ae1672f126e03b3a4932
+  ProjectAdvisor:
+    source: experts
+    path: experts/ProjectAdvisor/expert.md
+    hash: 3aed2442450376c1f82f90f6066c02857f20b8ddc1e1f787f0961120a706a6d1

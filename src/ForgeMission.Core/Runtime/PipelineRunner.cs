@@ -157,7 +157,7 @@ public class PipelineRunner
             if (context.TryGetValue("feedback", out var fb))
                 loopFeedback = fb?.ToString();
 
-            var text = context.TryGetValue("output", out var last) ? last.ToString()! : string.Empty;
+            var text = context.TryGetValue("output", out var last) ? last?.ToString() ?? string.Empty : string.Empty;
 
             if (failReason is null)
                 return new MissionResult(options.MissionName, text, MissionStatus.Pass, null, attempt);
