@@ -1,0 +1,11 @@
+@if (Signal is not null)
+{
+    <div class="trust-badge @(Signal.Verified ? "verified" : "unverified")">
+        <span class="trust-icon">@(Signal.Verified ? "✓" : "✗")</span>
+        <span class="trust-label">@(Signal.Verified ? "Verified" : "Unverified")</span>
+    </div>
+}
+
+@code {
+    [Parameter] public TrustSignal? Signal { get; set; }
+}

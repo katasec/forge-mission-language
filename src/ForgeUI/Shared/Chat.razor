@@ -1,0 +1,96 @@
+@inject MissionService Mission
+
+<div class="chat-shell">
+    <div class="chat-topbar">
+        <span class="chat-title">Forge</span>
+        @if (_messages.Any())
+        {
+            <span class="chat-meta">@_messages.Last().Trace.Count steps · @_messages.Last().Trust?.RetryCount retries</span>
+        }
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        @foreach (var msg in _messages)
+        {
+            <div class="msg-user">@msg.UserText</div>
+            <div class="msg-agent">
+                <div class="agent-card @(msg.Trust?.Verified == true ? "card-verified" : "card-unverified")">
+                    <div class="agent-card-header">
+                        <TrustSignalBadge Signal="msg.Trust" />
+                        @if (msg.Trace.Count > 0)
+                        {
+                            <button class="show-thinking" @onclick="() => ToggleTrace(msg)">
+                                @(_expandedMessages.Contains(msg) ? "hide thinking ▲" : "show thinking ▼")
+                            </button>
+                        }
+                    </div>
+                    <div class="agent-answer">@MarkdownRenderer.Render(msg.AgentText)</div>
+                    <PipelineTrace Events="msg.Trace" ShowTrace="_expandedMessages.Contains(msg)" />
+                </div>
+            </div>
+        }
+
+        @if (_running)
+        {
+            <div class="msg-agent">
+                <div class="agent-card card-running">
+                    <div class="agent-card-header">
+                        <span class="thinking-pulse">thinking…</span>
+                    </div>
+                    <PipelineTrace Events="_liveTrace" ShowTrace="true" />
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input-row">
+        <input class="chat-input"
+               @bind="_input"
+               @bind:event="oninput"
+               @onkeydown="OnKeyDown"
+               placeholder="Ask something…"
+               disabled="@_running" />
+        <button class="chat-send" @onclick="SendAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_input))">
+            Send
+        </button>
+    </div>
+</div>
+
+@code {
+    private string _input = "";
+    private bool   _running;
+    private readonly List<ChatMessage>          _messages        = [];
+    private readonly List<PipelineTraceEvent>   _liveTrace       = [];
+    private readonly HashSet<ChatMessage>       _expandedMessages = [];
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_input) || _running) return;
+        var text = _input.Trim();
+        _input   = "";
+        _running = true;
+        _liveTrace.Clear();
+        StateHasChanged();
+
+        var result = await Mission.RunAsync(text, OnStep);
+        _messages.Add(result);
+        _running = false;
+        StateHasChanged();
+    }
+
+    private void OnStep(PipelineTraceEvent ev)
+    {
+        _liveTrace.Add(ev);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleTrace(ChatMessage msg)
+    {
+        if (!_expandedMessages.Add(msg)) _expandedMessages.Remove(msg);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SendAsync();
+    }
+}
