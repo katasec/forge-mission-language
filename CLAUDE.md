@@ -76,6 +76,53 @@ Releases are cut via GitHub Actions (`workflow_dispatch`):
 Semver: patch bump for bug fixes and backwards-compatible changes; minor for new
 user-visible language features; major for breaking `.mcl` syntax changes.
 
+## Supported providers
+
+`ProviderClientBuilder` in `src/ForgeMission.Cli/ProviderClientBuilder.cs` maps
+the `provider` field in `forge.toml` to an `IChatClient`. Adding a new provider
+is a single switch case + one private method — no new packages needed for
+OpenAI-compatible APIs.
+
+| `provider` value | API | SDK used |
+|---|---|---|
+| `openai` / `azure` | OpenAI / Azure OpenAI | `OpenAI` NuGet |
+| `anthropic` | Anthropic Claude | `Anthropic` NuGet |
+| `ollama` | Ollama (local) | `OpenAI` NuGet (pointed at localhost) |
+| `xai` | xAI Grok | `OpenAI` NuGet (pointed at api.x.ai/v1) |
+
+**forge.toml examples:**
+
+```toml
+# OpenAI
+[providers.default]
+provider = "openai"
+model    = env("MCL_MODEL", "gpt-4o-mini")
+apiKey   = env("MCL_API_KEY")
+
+# Anthropic
+[providers.default]
+provider = "anthropic"
+model    = env("MCL_MODEL", "claude-haiku-4-5-20251001")
+apiKey   = env("MCL_API_KEY")
+
+# xAI (Grok)
+[providers.default]
+provider = "xai"
+model    = env("MCL_MODEL", "grok-3-mini")
+apiKey   = env("XAI_API_KEY")
+
+# Ollama (local, no key needed)
+[providers.default]
+provider = "ollama"
+model    = "llama3.2"
+apiKey   = ""
+```
+
+**Adding a new OpenAI-compatible provider** (e.g. Groq, Together, Mistral):
+1. Add a case to the switch in `ProviderClientBuilder.cs`
+2. Add a private method pointing `OpenAIClientOptions.Endpoint` at the provider's base URL
+3. No new NuGet packages required
+
 ## Code conventions
 
 - Language files: `.mcl` extension, binary: `forge`.
