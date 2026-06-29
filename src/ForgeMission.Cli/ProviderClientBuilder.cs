@@ -20,6 +20,7 @@ public static class ProviderClientBuilder
             "openai" or "azure" => BuildOpenAiClient(profile),
             "ollama"            => BuildOllamaClient(profile),
             "anthropic"         => BuildAnthropicClient(profile),
+            "xai"               => BuildXaiClient(profile),
             _ => throw new InvalidOperationException($"Unknown provider '{profile.Provider}'")
         };
 
@@ -41,6 +42,18 @@ public static class ProviderClientBuilder
             : p.Endpoint;
         var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint) };
         return new OpenAIClient(new ApiKeyCredential("ollama"), options)
+            .GetChatClient(p.Model)
+            .AsIChatClient();
+    }
+
+    // xAI (Grok) is OpenAI-compatible — point the OpenAI client at api.x.ai.
+    private static IChatClient BuildXaiClient(ProviderProfile p)
+    {
+        var endpoint = string.IsNullOrWhiteSpace(p.Endpoint)
+            ? "https://api.x.ai/v1"
+            : p.Endpoint;
+        var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint) };
+        return new OpenAIClient(new ApiKeyCredential(p.ApiKey ?? string.Empty), options)
             .GetChatClient(p.Model)
             .AsIChatClient();
     }
